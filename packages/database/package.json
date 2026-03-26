@@ -1,0 +1,14 @@
+{
+  "name": "@alquileres/database",
+  "version": "0.0.1",
+  "private": true,
+  "main": "./types/database.types.ts",
+  "types": "./types/database.types.ts",
+  "exports": {
+    ".": "./types/database.types.ts"
+  },
+  "devDependencies": {
+    "@alquileres/config": "workspace:*",
+    "typescript": "^5.7.3"
+  }
+}
