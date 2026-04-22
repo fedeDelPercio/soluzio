@@ -15,8 +15,7 @@ export async function registrarFotoEstadoInicialAction(formData: FormData) {
 
   if (!contratoId || !rutaArchivo) return { error: 'Datos incompletos' }
 
-  const admin = createAdminClient()
-  const db    = admin as any
+  const db = createAdminClient() as any
 
   // Verificar que el contrato existe y que el usuario tiene acceso
   const { data: contrato } = await db
@@ -34,14 +33,14 @@ export async function registrarFotoEstadoInicialAction(formData: FormData) {
   }
 
   // Límite de 30 fotos por contrato
-  const { count } = await admin
+  const { count } = await db
     .from('estado_inicial_fotos')
     .select('id', { count: 'exact', head: true })
     .eq('contrato_id', contratoId)
 
   if ((count ?? 0) >= 30) return { error: 'Llegaste al límite de 30 fotos.' }
 
-  const { error } = await admin.from('estado_inicial_fotos').insert({
+  const { error } = await db.from('estado_inicial_fotos').insert({
     organizacion_id: perfil.organizacion_id,
     contrato_id:     contratoId,
     subido_por:      user.id,
@@ -61,9 +60,9 @@ export async function actualizarDescripcionFotoAction(fotoId: string, descripcio
   const { user, perfil } = await getSession()
   if (!user || !perfil) return { error: 'No autorizado' }
 
-  const admin = createAdminClient()
+  const db = createAdminClient() as any
 
-  const { data: foto } = await admin
+  const { data: foto } = await db
     .from('estado_inicial_fotos')
     .select('contrato_id, subido_por')
     .eq('id', fotoId)
@@ -71,7 +70,7 @@ export async function actualizarDescripcionFotoAction(fotoId: string, descripcio
 
   if (!foto || foto.subido_por !== user.id) return { error: 'No podés editar esta foto' }
 
-  const { error } = await admin
+  const { error } = await db
     .from('estado_inicial_fotos')
     .update({ descripcion: descripcion.trim() || null })
     .eq('id', fotoId)
@@ -86,9 +85,9 @@ export async function agregarFeedbackFotoAction(fotoId: string, feedback: string
   const { perfil } = await getSession()
   if (!perfil || perfil.rol !== 'administrador') return { error: 'Solo administradores' }
 
-  const admin = createAdminClient()
+  const db = createAdminClient() as any
 
-  const { data: foto } = await admin
+  const { data: foto } = await db
     .from('estado_inicial_fotos')
     .select('contrato_id')
     .eq('id', fotoId)
@@ -96,7 +95,7 @@ export async function agregarFeedbackFotoAction(fotoId: string, feedback: string
 
   if (!foto) return { error: 'Foto no encontrada' }
 
-  const { error } = await admin
+  const { error } = await db
     .from('estado_inicial_fotos')
     .update({ feedback_admin: feedback.trim() || null })
     .eq('id', fotoId)
@@ -112,8 +111,9 @@ export async function eliminarFotoEstadoInicialAction(fotoId: string): Promise<{
   if (!user || !perfil) return { error: 'No autorizado' }
 
   const admin = createAdminClient()
+  const db    = admin as any
 
-  const { data: foto } = await admin
+  const { data: foto } = await db
     .from('estado_inicial_fotos')
     .select('id, contrato_id, subido_por, ruta_archivo, feedback_admin')
     .eq('id', fotoId)
@@ -132,7 +132,7 @@ export async function eliminarFotoEstadoInicialAction(fotoId: string): Promise<{
   // Borrar archivo de Storage
   await admin.storage.from('estado-inicial').remove([foto.ruta_archivo])
 
-  const { error } = await admin.from('estado_inicial_fotos').delete().eq('id', fotoId)
+  const { error } = await db.from('estado_inicial_fotos').delete().eq('id', fotoId)
   if (error) return { error: error.message }
 
   revalidatePath(`/contratos/${foto.contrato_id}/estado-inicial`)
