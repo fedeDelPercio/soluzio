@@ -10,7 +10,8 @@ const NAV_ADMIN: NavItem[] = [
   { label: 'Resumen', href: '/overview', icon: 'LayoutDashboard' },
   { label: 'Contratos', href: '/contratos', icon: 'FileText' },
   { label: 'Pagos', href: '/pagos', icon: 'CreditCard' },
-  { label: 'Mantenimiento', href: '/mantenimiento', icon: 'Wrench' },
+  { label: 'Solicitudes', href: '/solicitudes', icon: 'MessageSquare' },
+  { label: 'Inquilinos', href: '/inquilinos', icon: 'User' },
   { label: 'Propiedades', href: '/propiedades', icon: 'Building2' },
   { label: 'Configuración', href: '/configuracion', icon: 'Settings' },
 ]
@@ -25,8 +26,8 @@ const NAV_PROPIETARIO: NavItem[] = [
 const NAV_INQUILINO: NavItem[] = [
   { label: 'Resumen', href: '/overview', icon: 'LayoutDashboard' },
   { label: 'Mis pagos', href: '/pagos', icon: 'CreditCard' },
-  { label: 'Mantenimiento', href: '/mantenimiento', icon: 'Wrench' },
-  { label: 'Mis documentos', href: '/documentos', icon: 'FileText' },
+  { label: 'Solicitudes', href: '/solicitudes', icon: 'MessageSquare' },
+  { label: 'Mis contratos', href: '/contratos', icon: 'FileText' },
   { label: 'Mi perfil', href: '/configuracion/perfil', icon: 'User' },
 ]
 

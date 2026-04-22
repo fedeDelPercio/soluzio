@@ -11,7 +11,7 @@ export default async function NuevoContratoPage() {
       <div>
         <h1 className="text-xl font-semibold text-zinc-900">Nuevo contrato</h1>
         <p className="text-sm text-zinc-500 mt-1">
-          Subí el PDF del contrato y Claude va a extraer todos los datos automáticamente.
+          Subí el PDF del contrato y la IA va a extraer todos los datos automáticamente.
         </p>
       </div>
 

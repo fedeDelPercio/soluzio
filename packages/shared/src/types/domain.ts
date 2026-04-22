@@ -13,7 +13,11 @@ export interface ResultadoAnalisisContrato {
   monto_deposito: number | null // ARS
   indice_ajuste: IndiceAjuste
   periodo_ajuste_meses: number // cuántos meses acumula el índice (ej: 3)
+  dia_vencimiento_pago: number | null // día del mes en que vence el pago (1-31), ej: 10
   vencimiento_seguro_incendio: string // YYYY-MM-DD (fecha_inicio + 15 días)
+  requiere_seguro_incendio: boolean | null // si el contrato exige contratar seguro de incendio
+  tasa_punitorio_mensual: number | null // porcentaje mensual de interés punitorio por mora (ej: 5)
+  observacion_modalidad_cobro: string | null // observación textual sobre la cláusula de mora (hint para el admin)
   inquilino: {
     nombre: string
     apellido: string
@@ -25,6 +29,8 @@ export interface ResultadoAnalisisContrato {
     nombre: string
     apellido: string
     dni: string | null
+    email: string | null
+    telefono: string | null
   }
   garante: {
     nombre: string

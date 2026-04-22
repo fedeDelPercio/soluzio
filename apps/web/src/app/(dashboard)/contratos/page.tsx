@@ -4,6 +4,7 @@ import { getSession } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { FileText, Plus } from 'lucide-react'
 import { buttonVariants } from '@/components/ui/button-variants'
+import { ContratoActionsMenu } from './contrato-actions-menu'
 import type { Contrato } from '@alquileres/database'
 
 type ContratoListItem = Pick<Contrato, 'id' | 'estado' | 'fecha_inicio' | 'fecha_fin' | 'monto_actual' | 'indice_ajuste'> & {
@@ -68,28 +69,34 @@ export default async function ContratosPage() {
             const prop = c.propiedades as any
             const inq  = c.inquilino  as any
             return (
-              <Link
-                key={c.id}
-                href={c.estado === 'borrador' ? `/contratos/${c.id}/documentos` : `/contratos/${c.id}`}
-                className="flex items-center justify-between px-4 py-3 hover:bg-zinc-50 transition-colors"
-              >
-                <div className="space-y-0.5 min-w-0">
-                  <p className="text-sm font-medium text-zinc-900 truncate">
-                    {prop?.calle} {prop?.numero} — {prop?.ciudad}
-                  </p>
-                  <p className="text-xs text-zinc-500">
-                    {inq?.nombre} {inq?.apellido} · {c.fecha_inicio} → {c.fecha_fin}
-                  </p>
-                </div>
-                <div className="flex items-center gap-3 flex-shrink-0 ml-4">
-                  <p className="text-sm text-zinc-700 font-medium hidden sm:block">
-                    ${c.monto_actual.toLocaleString('es-AR')}
-                  </p>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ESTADO_COLOR[c.estado]}`}>
-                    {ESTADO_LABEL[c.estado]}
-                  </span>
-                </div>
-              </Link>
+              <div key={c.id} className="relative flex items-center hover:bg-zinc-50 transition-colors">
+                <Link
+                  href={c.estado === 'borrador' ? `/contratos/${c.id}/documentos` : `/contratos/${c.id}`}
+                  className="flex items-center justify-between px-4 py-3 flex-1 min-w-0"
+                >
+                  <div className="space-y-0.5 min-w-0">
+                    <p className="text-sm font-medium text-zinc-900 truncate">
+                      {prop?.calle} {prop?.numero} — {prop?.ciudad}
+                    </p>
+                    <p className="text-xs text-zinc-500">
+                      {inq?.nombre} {inq?.apellido} · {c.fecha_inicio} → {c.fecha_fin}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3 flex-shrink-0 ml-4 mr-2">
+                    <p className="text-sm text-zinc-700 font-medium hidden sm:block">
+                      ${c.monto_actual.toLocaleString('es-AR')}
+                    </p>
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ESTADO_COLOR[c.estado]}`}>
+                      {ESTADO_LABEL[c.estado]}
+                    </span>
+                  </div>
+                </Link>
+                {esAdmin && (
+                  <div className="pr-3 flex-shrink-0">
+                    <ContratoActionsMenu contratoId={c.id} estado={c.estado} />
+                  </div>
+                )}
+              </div>
             )
           })}
         </div>

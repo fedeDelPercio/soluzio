@@ -71,7 +71,10 @@ export default async function PropiedadPage({ params }: Props) {
             <Building2 className="w-5 h-5 text-zinc-500" />
           </div>
           <div>
-            <h1 className="text-xl font-semibold text-zinc-900">{direccion}</h1>
+            <Link href="/propiedades" className="text-xs text-zinc-500 hover:text-zinc-900 transition-colors">
+              ← Propiedades
+            </Link>
+            <h1 className="text-xl font-semibold text-zinc-900 mt-1">{direccion}</h1>
             <p className="text-sm text-zinc-500">
               {[propiedad.barrio, propiedad.ciudad, propiedad.provincia].filter(Boolean).join(', ')}
               {' · '}

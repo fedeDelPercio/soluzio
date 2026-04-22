@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { getSession } from '@/lib/auth/session'
 
 export async function subirComprobanteAction(formData: FormData) {
@@ -16,11 +17,20 @@ export async function subirComprobanteAction(formData: FormData) {
 
   if (!pagoId || !rutaArchivo) return { error: 'Datos incompletos' }
 
-  const supabase = await createClient()
-  const db = supabase as any
+  // Usar admin client para las escrituras — el inquilino solo tiene SELECT en pagos
+  const admin = createAdminClient()
+
+  // Verificar que el pago pertenece a la organización del usuario
+  const { data: pago } = await admin
+    .from('pagos')
+    .select('id, organizacion_id, contrato_id')
+    .eq('id', pagoId)
+    .eq('organizacion_id', perfil.organizacion_id)
+    .single()
+  if (!pago) return { error: 'Pago no encontrado' }
 
   // Insertar comprobante
-  const { error: compError } = await db.from('comprobantes_pago').insert({
+  const { error: compError } = await admin.from('comprobantes_pago').insert({
     organizacion_id:     perfil.organizacion_id,
     pago_id:             pagoId,
     ruta_archivo:        rutaArchivo,
@@ -30,7 +40,7 @@ export async function subirComprobanteAction(formData: FormData) {
   if (compError) return { error: compError.message }
 
   // Actualizar estado del pago
-  const { error: pagoError } = await db
+  const { error: pagoError } = await admin
     .from('pagos')
     .update({ estado: 'comprobante_subido' })
     .eq('id', pagoId)

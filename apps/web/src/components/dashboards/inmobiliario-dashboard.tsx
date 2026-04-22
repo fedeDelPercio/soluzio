@@ -15,7 +15,7 @@ export function InmobiliarioDashboard({ perfil }: InmobiliarioDashboardProps) {
         <p className="text-sm text-zinc-500 mt-1">Tus alquileres activos</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="bg-white rounded-lg border border-zinc-200 p-4 space-y-3">
           <div className="flex items-center justify-between">
             <p className="text-sm text-zinc-500">Mis alquileres</p>

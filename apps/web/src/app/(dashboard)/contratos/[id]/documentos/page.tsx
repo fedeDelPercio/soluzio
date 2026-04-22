@@ -51,7 +51,7 @@ export default async function DocumentosPage({ params }: Props) {
         </Link>
         <h1 className="text-xl font-semibold text-zinc-900">Subir PDF del contrato</h1>
         <p className="text-sm text-zinc-500 mt-1">
-          Claude va a extraer automáticamente los datos del contrato.
+          La IA va a extraer automáticamente los datos del contrato.
           Después podrás revisar y confirmar la información.
         </p>
       </div>

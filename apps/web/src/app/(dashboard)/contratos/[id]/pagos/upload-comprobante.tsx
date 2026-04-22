@@ -3,8 +3,6 @@
 import { useState, useRef, useTransition } from 'react'
 import { Upload, Loader2, CheckCircle2, AlertCircle, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { createClient } from '@/lib/supabase/client'
 import { subirComprobanteAction } from './actions'
 
@@ -48,6 +46,9 @@ export function UploadComprobante({ pagoId, contratoId, organizacionId }: Props)
     setError(null)
     setSubiendo(true)
 
+    // Capturar antes del await — e.currentTarget se vuelve null después
+    const form = e.currentTarget
+
     const supabase = createClient()
     const ext      = archivo.name.split('.').pop()
     const ruta     = `${organizacionId}/${contratoId}/${pagoId}.${ext}`
@@ -62,7 +63,7 @@ export function UploadComprobante({ pagoId, contratoId, organizacionId }: Props)
       return
     }
 
-    const fd = new FormData(e.currentTarget)
+    const fd = new FormData(form)
     fd.set('ruta_archivo', ruta)
 
     startTransition(async () => {
@@ -105,18 +106,6 @@ export function UploadComprobante({ pagoId, contratoId, organizacionId }: Props)
               <span className="text-xs">Seleccionar archivo (PDF o imagen)</span>
             </div>
           )}
-        </div>
-      </div>
-
-      {/* Campos opcionales */}
-      <div className="grid grid-cols-2 gap-2">
-        <div className="space-y-1">
-          <Label className="text-xs">Fecha de transferencia <span className="text-zinc-400">(opc.)</span></Label>
-          <Input name="fecha_transferencia" type="date" className="h-7 text-xs" />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs">Referencia bancaria <span className="text-zinc-400">(opc.)</span></Label>
-          <Input name="referencia_bancaria" className="h-7 text-xs" placeholder="Nro. operación" />
         </div>
       </div>
 

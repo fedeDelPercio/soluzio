@@ -4,9 +4,12 @@ import { getSession } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { Building2, Plus, MapPin } from 'lucide-react'
 import { buttonVariants } from '@/components/ui/button-variants'
+import { PropiedadActionsMenu } from './propiedad-actions-menu'
 import type { Propiedad } from '@alquileres/database'
 
-type PropiedadItem = Pick<Propiedad, 'id' | 'calle' | 'numero' | 'piso' | 'depto' | 'barrio' | 'ciudad' | 'tipo_propiedad' | 'propietario_id'>
+type PropiedadItem = Pick<Propiedad, 'id' | 'calle' | 'numero' | 'piso' | 'depto' | 'barrio' | 'ciudad' | 'tipo_propiedad' | 'propietario_id'> & {
+  contratos: { estado: string }[]
+}
 
 export default async function PropiedadesPage() {
   const { user, perfil } = await getSession()
@@ -16,7 +19,7 @@ export default async function PropiedadesPage() {
 
   const { data: propiedadesRaw } = await (supabase as any)
     .from('propiedades')
-    .select('id, calle, numero, piso, depto, barrio, ciudad, tipo_propiedad, propietario_id')
+    .select('id, calle, numero, piso, depto, barrio, ciudad, tipo_propiedad, propietario_id, contratos ( estado )')
     .order('creado_en', { ascending: false })
   const propiedades = (propiedadesRaw ?? []) as PropiedadItem[]
 
@@ -54,28 +57,40 @@ export default async function PropiedadesPage() {
           {propiedades.map((p) => {
             const direccion = [p.calle, p.numero, p.piso && `Piso ${p.piso}`, p.depto].filter(Boolean).join(' ')
             const ubicacion  = [p.barrio, p.ciudad].filter(Boolean).join(', ')
+            const tieneContratoActivo = (p.contratos ?? []).some(
+              (c) => ['activo', 'borrador', 'por_vencer'].includes(c.estado)
+            )
             return (
-              <Link
-                key={p.id}
-                href={`/propiedades/${p.id}`}
-                className="bg-white rounded-lg border border-zinc-200 p-4 hover:border-zinc-300 hover:shadow-sm transition-all space-y-2"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-zinc-400 flex-shrink-0 mt-0.5" />
-                    <p className="text-sm font-medium text-zinc-900 leading-tight">{direccion}</p>
+              <div key={p.id} className="relative group bg-white rounded-lg border border-zinc-200 hover:border-zinc-300 hover:shadow-sm transition-all">
+                <Link
+                  href={`/propiedades/${p.id}`}
+                  className="block p-4 space-y-2"
+                >
+                  <div className="flex items-start justify-between gap-2 pr-6">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="w-4 h-4 text-zinc-400 flex-shrink-0 mt-0.5" />
+                      <p className="text-sm font-medium text-zinc-900 leading-tight">{direccion}</p>
+                    </div>
+                    <span className="text-xs text-zinc-500 bg-zinc-100 px-2 py-0.5 rounded-full flex-shrink-0 capitalize">
+                      {p.tipo_propiedad}
+                    </span>
                   </div>
-                  <span className="text-xs text-zinc-500 bg-zinc-100 px-2 py-0.5 rounded-full flex-shrink-0 capitalize">
-                    {p.tipo_propiedad}
-                  </span>
-                </div>
-                {ubicacion && (
-                  <div className="flex items-center gap-1.5 pl-6">
-                    <MapPin className="w-3 h-3 text-zinc-400" />
-                    <p className="text-xs text-zinc-500">{ubicacion}</p>
+                  {ubicacion && (
+                    <div className="flex items-center gap-1.5 pl-6">
+                      <MapPin className="w-3 h-3 text-zinc-400" />
+                      <p className="text-xs text-zinc-500">{ubicacion}</p>
+                    </div>
+                  )}
+                </Link>
+                {esAdmin && (
+                  <div className="absolute top-3 right-3">
+                    <PropiedadActionsMenu
+                      propiedadId={p.id}
+                      tieneContratoActivo={tieneContratoActivo}
+                    />
                   </div>
                 )}
-              </Link>
+              </div>
             )
           })}
         </div>

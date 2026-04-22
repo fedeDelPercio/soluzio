@@ -1,6 +1,7 @@
 'use server'
 
 import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { getSession } from '@/lib/auth/session'
 import type { TablesInsert } from '@alquileres/database'
@@ -40,4 +41,37 @@ export async function crearPropiedadAction(formData: FormData) {
   if (error) return { error: (error as any).message }
 
   redirect(`/propiedades/${(data as any).id}`)
+}
+
+export async function eliminarPropiedadAction(propiedadId: string) {
+  const { user, perfil } = await getSession()
+  if (!user || !perfil || perfil.rol !== 'administrador') {
+    return { error: 'No autorizado' }
+  }
+
+  const supabase = await createClient()
+  const db = supabase as any
+
+  // Verificar que no tenga contratos activos o en borrador
+  const { data: contratos } = await db
+    .from('contratos')
+    .select('id, estado')
+    .eq('propiedad_id', propiedadId)
+    .in('estado', ['activo', 'borrador', 'por_vencer'])
+    .limit(1)
+
+  if (contratos && contratos.length > 0) {
+    return { error: 'No se puede eliminar una propiedad con contratos activos.' }
+  }
+
+  const { error } = await db
+    .from('propiedades')
+    .delete()
+    .eq('id', propiedadId)
+    .eq('organizacion_id', perfil.organizacion_id)
+
+  if (error) return { error: (error as any).message }
+
+  revalidatePath('/propiedades')
+  return { ok: true }
 }

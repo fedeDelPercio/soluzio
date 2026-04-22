@@ -1,5 +1,17 @@
 # Administrador de Alquileres — CLAUDE.md
 
+## Principios de Desarrollo
+
+Todo el código de este proyecto debe respetar estos tres pilares sin excepción:
+
+**Escalabilidad** — Cada decisión de arquitectura debe considerar que el sistema pasará de 1 organización a N. Usar siempre `organizacion_id` en queries y políticas RLS. Evitar hardcodear IDs, rutas o configuraciones específicas de un tenant. Preferir batch inserts sobre loops con queries individuales. Diseñar las abstracciones pensando en que el volumen puede crecer 100x.
+
+**Responsive (Mobile-first)** — Toda UI debe funcionar correctamente en móviles (desde 320px) y escalar hacia desktop. Usar siempre prefijos responsive de Tailwind (`sm:`, `md:`, `lg:`). Los grids multi-columna arrancan en una columna en mobile. Nunca usar anchos o alturas fijas sin un fallback responsive. Tamaños de touch target mínimo de 44px para elementos interactivos.
+
+**Seguridad** — Validar todos los inputs del usuario con Zod antes de procesarlos. Nunca confiar en datos del cliente para operaciones sensibles; verificar siempre la sesión y el rol en el servidor. Las RLS policies de Supabase son la última línea de defensa, no la única. No exponer IDs internos, claves, ni mensajes de error detallados al cliente. Usar `createAdminClient()` (service role) solo en Server Actions y Edge Functions, nunca en el browser. Sanitizar cualquier dato antes de interpolarlo en queries.
+
+---
+
 ## Contexto del Negocio
 
 **Red Suma** maneja ~1.200 alquileres/año. Este sistema captura ese volumen ofreciendo administración de alquileres con un 5% de comisión sobre el valor del alquiler (~$40.000/mes por unidad con alquiler promedio de $800.000).

@@ -7,6 +7,7 @@ CREATE TABLE contratos (
   organizacion_id uuid NOT NULL REFERENCES organizaciones(id) ON DELETE CASCADE,
   propiedad_id    uuid NOT NULL REFERENCES propiedades(id),
   inquilino_id    uuid NOT NULL REFERENCES perfiles(id),
+  coinquilino_id  uuid REFERENCES perfiles(id),
   garante_id      uuid REFERENCES perfiles(id),
 
   -- Fechas y montos
@@ -21,7 +22,9 @@ CREATE TABLE contratos (
   proxima_fecha_ajuste    date,
 
   -- Depósito y seguro
+  moneda                      moneda_tipo    NOT NULL DEFAULT 'ars',
   monto_deposito              numeric(12,2),
+  moneda_deposito             moneda_tipo    NOT NULL DEFAULT 'ars',
   vencimiento_seguro_incendio date,
 
   -- Estado

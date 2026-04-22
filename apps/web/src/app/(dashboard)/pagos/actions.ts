@@ -4,16 +4,13 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { getSession } from '@/lib/auth/session'
 
-export async function verificarPagoAction(pagoId: string) {
+export async function verificarPagoAction(pagoId: string): Promise<void> {
   const { user, perfil } = await getSession()
-  if (!user || !perfil || perfil.rol !== 'administrador') {
-    return { error: 'No autorizado' }
-  }
+  if (!user || !perfil || perfil.rol !== 'administrador') return
 
   const supabase = await createClient()
   const db = supabase as any
 
-  // Marcar comprobante como recibido
   const { error: compError } = await db
     .from('comprobantes_pago')
     .update({
@@ -24,17 +21,15 @@ export async function verificarPagoAction(pagoId: string) {
     .eq('pago_id', pagoId)
     .eq('pago_recibido', false)
 
-  if (compError) return { error: compError.message }
+  if (compError) return
 
-  // Actualizar estado del pago
   const { error: pagoError } = await db
     .from('pagos')
     .update({ estado: 'verificado', monto_pagado: null })
     .eq('id', pagoId)
 
-  if (pagoError) return { error: pagoError.message }
+  if (pagoError) return
 
   revalidatePath('/pagos')
   revalidatePath('/overview')
-  return { ok: true }
 }

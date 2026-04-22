@@ -68,3 +68,22 @@ export const ESTADO_DOCUMENTO = {
 } as const
 
 export type EstadoDocumento = (typeof ESTADO_DOCUMENTO)[keyof typeof ESTADO_DOCUMENTO]
+
+export const TIPO_SOLICITUD = {
+  MANTENIMIENTO: 'mantenimiento',
+  CONSULTA: 'consulta',
+  RECLAMO: 'reclamo',
+  RESCISION: 'rescision',
+  OTRO: 'otro',
+} as const
+
+export type TipoSolicitud = (typeof TIPO_SOLICITUD)[keyof typeof TIPO_SOLICITUD]
+
+export const PRIORIDAD_SOLICITUD = {
+  BAJA: 'baja',
+  MEDIA: 'media',
+  ALTA: 'alta',
+  URGENTE: 'urgente',
+} as const
+
+export type PrioridadSolicitud = (typeof PRIORIDAD_SOLICITUD)[keyof typeof PRIORIDAD_SOLICITUD]

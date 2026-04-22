@@ -6,7 +6,7 @@ import type { ResponseCookie } from 'next/dist/compiled/@edge-runtime/cookies'
  * Middleware global: refresca la sesión Supabase en cada request
  * y redirige usuarios no autenticados a /login.
  */
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(

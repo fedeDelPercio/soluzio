@@ -43,7 +43,25 @@
       "mcp__supabase__list_projects",
       "mcp__supabase__deploy_edge_function",
       "mcp__supabase__get_logs",
-      "mcp__supabase__get_edge_function"
+      "mcp__supabase__get_edge_function",
+      "Bash(git config:*)",
+      "mcp__supabase__execute_sql",
+      "Bash(taskkill //F //PID 11604)",
+      "Bash(pnpm typecheck:*)",
+      "mcp__supabase__list_migrations",
+      "mcp__supabase__apply_migration",
+      "Bash(find 'c:\\\\dev\\\\Claude\\\\Administrador de Alquileres' -type f -path */contratos/[id]/*)",
+      "Bash(ls -la '/c/dev/Claude/Administrador de Alquileres/apps/web/src/app/\\(dashboard\\)/contratos/')",
+      "Bash(ls -la \"/c/dev/Claude/Administrador de Alquileres/apps/web/src/app/\\(dashboard\\)/contratos/[id]/\")",
+      "Bash(ls -la \"/c/dev/Claude/Administrador de Alquileres/apps/web/src/app/\\(dashboard\\)/contratos/[id]/pagos/\")",
+      "Bash(find \"/c/dev/Claude/Administrador de Alquileres/apps/web/src/app/\\(dashboard\\)/contratos/[id]/ajuste\" -type f)",
+      "Bash(find \"c:/dev/Claude/Administrador de Alquileres/apps/web/src/app/\\(dashboard\\)/contratos\" -name \"actions.ts\" -type f)",
+      "Bash(ls '/c/dev/Claude/Administrador de Alquileres/apps/web/src/app/\\\\\\(dashboard\\\\\\)/')",
+      "Bash(grep -l \"solicitud_mantenimiento\\\\|CREATE TABLE.*mantenimiento\" '/c/dev/Claude/Administrador de Alquileres/supabase/migrations'/*.sql)",
+      "Bash(head -5 '/c/dev/Claude/Administrador de Alquileres/supabase/migrations'/*.sql)",
+      "Bash(ls -la '/c/dev/Claude/Administrador de Alquileres/apps/web/src/app/\\(dashboard\\)/')",
+      "Bash(ls \"c:/dev/Claude/Administrador de Alquileres/apps/web/src/app/\\(dashboard\\)/\")",
+      "Bash(find 'c:/dev/Claude/Administrador de Alquileres/apps/web/src/app/\\(dashboard\\)/contratos' -type f -name *.tsx -o -name *.ts)"
     ]
   }
 }
