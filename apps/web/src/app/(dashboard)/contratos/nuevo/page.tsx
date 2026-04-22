@@ -1,10 +1,20 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/auth/session'
+import { createClient } from '@/lib/supabase/server'
 import { ContratoWizard } from './contrato-wizard'
 
 export default async function NuevoContratoPage() {
   const { user, perfil } = await getSession()
   if (!user || !perfil || perfil.rol !== 'administrador') redirect('/overview')
+
+  const supabase = await createClient()
+  const { data: inmobiliariosRaw } = await (supabase as any)
+    .from('perfiles')
+    .select('id, nombre, apellido')
+    .eq('rol', 'inmobiliario')
+    .order('apellido')
+
+  const inmobiliarios = (inmobiliariosRaw ?? []) as { id: string; nombre: string; apellido: string }[]
 
   return (
     <div className="p-6 space-y-6 max-w-2xl">
@@ -15,7 +25,7 @@ export default async function NuevoContratoPage() {
         </p>
       </div>
 
-      <ContratoWizard organizacionId={perfil.organizacion_id} />
+      <ContratoWizard organizacionId={perfil.organizacion_id} inmobiliarios={inmobiliarios} />
     </div>
   )
 }

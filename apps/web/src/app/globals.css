@@ -61,3 +61,50 @@ button:not(:disabled),
 [role="button"]:not(:disabled) {
   cursor: pointer;
 }
+
+/* ─── Normalización de inputs / selects / textareas ─────────────────────
+   Problema: los <input> nativos tienen un inset-shadow sutil en WebKit y
+   Firefox que hace que luzcan grises aunque se aplique bg-white. Los <select>
+   no lo tienen, por eso lucen blancos. La única forma de anularlo es con
+   appearance:none + bg explícito.
+─────────────────────────────────────────────────────────────────────── */
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="color"]):not([disabled]):not([readonly]),
+select:not([disabled]),
+textarea:not([disabled]):not([readonly]) {
+  background-color: #ffffff !important;
+  background-image: none !important;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="tel"],
+input[type="number"],
+input[type="password"],
+input[type="search"],
+input[type="url"],
+input[type="date"],
+input[type="datetime-local"],
+input[type="month"],
+input[type="time"],
+input[type="week"],
+input:not([type]),
+textarea {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  box-shadow: none;
+}
+
+/* Override del autofill de Chrome / Safari (fondo amarillo-gris) */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 30px #ffffff inset !important;
+  -webkit-text-fill-color: #09090b !important;
+  caret-color: #09090b;
+  transition: background-color 600000s 0s, color 600000s 0s;
+}

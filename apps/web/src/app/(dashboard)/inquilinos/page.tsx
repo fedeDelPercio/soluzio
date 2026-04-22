@@ -8,7 +8,8 @@ import { InquilinoActionsMenu } from './inquilino-actions-menu'
 export default async function InquilinosPage() {
   const { user, perfil } = await getSession()
   if (!user || !perfil) redirect('/login')
-  if (perfil.rol !== 'administrador') redirect('/overview')
+  if (perfil.rol !== 'administrador' && perfil.rol !== 'inmobiliario') redirect('/overview')
+  const esAdmin = perfil.rol === 'administrador'
 
   const supabase = await createClient()
 
@@ -86,12 +87,14 @@ export default async function InquilinosPage() {
                   </div>
                 </Link>
 
-                <div className="pr-3 flex-shrink-0">
-                  <InquilinoActionsMenu
-                    inquilinoId={inq.id}
-                    tieneContratoActivo={!!contratoActivo}
-                  />
-                </div>
+                {esAdmin && (
+                  <div className="pr-3 flex-shrink-0">
+                    <InquilinoActionsMenu
+                      inquilinoId={inq.id}
+                      tieneContratoActivo={!!contratoActivo}
+                    />
+                  </div>
+                )}
               </div>
             )
           })}

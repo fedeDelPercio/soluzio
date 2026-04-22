@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { crearContratoDesdeAnalisisAction } from './actions'
 import { registrarDocumentoAction } from '../[id]/documentos/actions'
+import { crearInmobiliarioAction } from '../../inmobiliarios/actions'
 import { createClient } from '@/lib/supabase/client'
 import {
   Upload, FileText, Loader2, CheckCircle2, AlertCircle,
@@ -137,7 +138,7 @@ interface ResultadoAnalisis {
   notas: string | null
 }
 
-const SELECT_CLASS = 'flex h-9 w-full rounded-md border border-zinc-200 bg-white px-3 py-1 text-sm text-zinc-900 shadow-sm focus:outline-none focus:ring-1 focus:ring-zinc-900'
+const SELECT_CLASS = 'flex h-8 w-full rounded-lg border border-zinc-200 bg-white px-2.5 py-1 text-sm text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900'
 const INPUT_CLASS  = 'h-8 text-sm bg-white'
 
 const PROVINCIAS = [
@@ -150,9 +151,16 @@ const PROVINCIAS = [
 
 interface WizardProps {
   organizacionId: string
+  inmobiliarios: { id: string; nombre: string; apellido: string }[]
 }
 
-export function ContratoWizard({ organizacionId }: WizardProps) {
+export function ContratoWizard({ organizacionId, inmobiliarios: inmobiliariosInicial }: WizardProps) {
+  const [inmobiliarios, setInmobiliarios]   = useState(inmobiliariosInicial)
+  const [inmobNuevoOpen, setInmobNuevoOpen] = useState(false)
+  const [inmobCreando, setInmobCreando]     = useState(false)
+  const [inmobError, setInmobError]         = useState<string | null>(null)
+  const [inmobSeleccionado, setInmobSeleccionado] = useState('')
+
   const router = useRouter()
 
   const [fase, setFase]   = useState<Fase>('upload')
@@ -166,6 +174,8 @@ export function ContratoWizard({ organizacionId }: WizardProps) {
   const [rutaArchivo, setRutaArchivo] = useState<string | null>(null)
   const [resultado, setResultado]     = useState<ResultadoAnalisis | null>(null)
   const [isDragging, setIsDragging]   = useState(false)
+  const [progreso, setProgreso]       = useState(0)
+  const [faseProgreso, setFaseProgreso] = useState<'subiendo' | 'analizando' | null>(null)
 
   // Documentos adicionales (fase 3)
   const docInputRef                             = useRef<HTMLInputElement>(null)
@@ -190,6 +200,21 @@ export function ContratoWizard({ organizacionId }: WizardProps) {
     if (!archivo) return
     setError(null)
     setSubiendo(true)
+    setProgreso(0)
+    setFaseProgreso('subiendo')
+
+    // Estimación de tiempos según tamaño del archivo
+    const sizeMB = archivo.size / 1024 / 1024
+    const uploadEstimadoMs   = Math.max(2500, sizeMB * 800)       // ~0.8s por MB, mínimo 2.5s
+    const analisisEstimadoMs = Math.max(25000, sizeMB * 1500 + 15000) // base 25s + 1.5s por MB
+
+    // Animar progreso durante el upload: avanza hasta 30%
+    const inicioUpload = Date.now()
+    const interval1 = setInterval(() => {
+      const transcurrido = Date.now() - inicioUpload
+      const pct = Math.min(30, (transcurrido / uploadEstimadoMs) * 30)
+      setProgreso(pct)
+    }, 120)
 
     const supabase  = createClient()
     const uploadId  = crypto.randomUUID()
@@ -199,13 +224,30 @@ export function ContratoWizard({ organizacionId }: WizardProps) {
       .from('documentos')
       .upload(ruta, archivo, { contentType: 'application/pdf', upsert: true })
 
+    clearInterval(interval1)
+
     if (uploadError) {
       setError(uploadError.message)
       setSubiendo(false)
+      setProgreso(0)
+      setFaseProgreso(null)
       return
     }
 
     setRutaArchivo(ruta)
+    setProgreso(35)
+    setFaseProgreso('analizando')
+
+    // Animar progreso durante el análisis IA: avanza hasta 95%
+    const inicioAnalisis = Date.now()
+    const interval2 = setInterval(() => {
+      const transcurrido = Date.now() - inicioAnalisis
+      // Easing: avanza rápido al principio y lento al final
+      const ratio = Math.min(1, transcurrido / analisisEstimadoMs)
+      const eased = 1 - Math.pow(1 - ratio, 2) // easeOutQuad
+      const pct = 35 + eased * 60 // 35% → 95%
+      setProgreso(Math.min(95, pct))
+    }, 200)
 
     const { data: { session } } = await supabase.auth.getSession()
     const res = await fetch('/api/analyze-contract', {
@@ -217,15 +259,24 @@ export function ContratoWizard({ organizacionId }: WizardProps) {
       body: JSON.stringify({ ruta_archivo: ruta }),
     })
 
-    setSubiendo(false)
+    clearInterval(interval2)
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}))
       setError(err.error ?? 'Error al analizar el contrato')
+      setSubiendo(false)
+      setProgreso(0)
+      setFaseProgreso(null)
       return
     }
 
+    setProgreso(100)
     const { resultado: r } = await res.json()
+    // Pequeño delay para que la animación del 100% se vea
+    await new Promise((r) => setTimeout(r, 300))
+    setSubiendo(false)
+    setProgreso(0)
+    setFaseProgreso(null)
     setResultado(r)
     setFase('revision')
   }
@@ -354,10 +405,22 @@ export function ContratoWizard({ organizacionId }: WizardProps) {
             />
 
             {subiendo ? (
-              <div className="space-y-3">
-                <Loader2 className="w-8 h-8 text-zinc-400 mx-auto animate-spin" />
-                <p className="text-sm font-medium text-zinc-600">Estamos analizando tu contrato con Inteligencia Artificial</p>
-                <p className="text-xs text-zinc-400">Esto puede tardar unos segundos</p>
+              <div className="space-y-3 py-2">
+                <p className="text-sm font-medium text-zinc-600">
+                  {faseProgreso === 'subiendo' ? 'Subiendo el PDF...' : 'Analizando con Inteligencia Artificial...'}
+                </p>
+                <div className="max-w-xs mx-auto space-y-1.5">
+                  <div className="h-1.5 w-full bg-zinc-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-zinc-900 rounded-full transition-all duration-200 ease-out"
+                      style={{ width: `${progreso}%` }}
+                    />
+                  </div>
+                  <p className="text-[11px] text-zinc-400 text-center">
+                    {Math.round(progreso)}%
+                    {faseProgreso === 'analizando' && progreso < 95 && ' · puede tardar hasta 1 minuto en contratos grandes'}
+                  </p>
+                </div>
               </div>
             ) : archivo ? (
               <div className="flex items-center justify-center gap-3">
@@ -465,6 +528,121 @@ export function ContratoWizard({ organizacionId }: WizardProps) {
                 {PROVINCIAS.map((p) => <option key={p} value={p}>{p}</option>)}
               </select>
             </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Inmobiliario / agente responsable <span className="text-zinc-400">(opc.)</span></Label>
+              <div className="flex gap-2">
+                <select
+                  name="inmobiliario_id"
+                  value={inmobSeleccionado}
+                  onChange={(e) => setInmobSeleccionado(e.target.value)}
+                  className={SELECT_CLASS}
+                >
+                  <option value="">Sin inmobiliario asignado</option>
+                  {inmobiliarios.map((i) => (
+                    <option key={i.id} value={i.id}>{i.nombre} {i.apellido}</option>
+                  ))}
+                </select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setInmobNuevoOpen(!inmobNuevoOpen)}
+                  className="h-9 flex-shrink-0"
+                >
+                  {inmobNuevoOpen ? <X className="w-3.5 h-3.5" /> : <><span className="mr-1">+</span> Nuevo</>}
+                </Button>
+              </div>
+              <p className="text-[11px] text-zinc-400">Agente externo que derivó el alquiler. Tendrá acceso en modo solo lectura.</p>
+
+              {inmobNuevoOpen && (
+                <div
+                  className="mt-2 p-3 bg-zinc-50 border border-zinc-200 rounded-md space-y-2"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault()
+                      ;(e.currentTarget.querySelector('button[data-submit]') as HTMLButtonElement)?.click()
+                    }
+                  }}
+                >
+                  <p className="text-xs font-medium text-zinc-700">Nuevo inmobiliario</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input
+                      id="inmob-nombre"
+                      placeholder="Nombre"
+                      className="h-8 text-xs"
+                      disabled={inmobCreando}
+                    />
+                    <Input
+                      id="inmob-apellido"
+                      placeholder="Apellido"
+                      className="h-8 text-xs"
+                      disabled={inmobCreando}
+                    />
+                  </div>
+                  <Input
+                    id="inmob-email"
+                    type="email"
+                    placeholder="Email (para invitar acceso)"
+                    className="h-8 text-xs"
+                    disabled={inmobCreando}
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <Input
+                      id="inmob-telefono"
+                      type="tel"
+                      placeholder="Teléfono (opc.)"
+                      className="h-8 text-xs"
+                      disabled={inmobCreando}
+                    />
+                    <Input
+                      id="inmob-dni"
+                      placeholder="DNI / CUIT (opc.)"
+                      className="h-8 text-xs"
+                      disabled={inmobCreando}
+                    />
+                  </div>
+
+                  {inmobError && (
+                    <div className="flex items-center gap-1.5 text-xs text-red-600">
+                      <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" /> {inmobError}
+                    </div>
+                  )}
+
+                  <Button
+                    type="button"
+                    size="sm"
+                    data-submit
+                    disabled={inmobCreando}
+                    onClick={async () => {
+                      setInmobError(null)
+                      setInmobCreando(true)
+                      const fd = new FormData()
+                      fd.set('nombre',   (document.getElementById('inmob-nombre')   as HTMLInputElement)?.value ?? '')
+                      fd.set('apellido', (document.getElementById('inmob-apellido') as HTMLInputElement)?.value ?? '')
+                      fd.set('email',    (document.getElementById('inmob-email')    as HTMLInputElement)?.value ?? '')
+                      fd.set('telefono', (document.getElementById('inmob-telefono') as HTMLInputElement)?.value ?? '')
+                      fd.set('dni',      (document.getElementById('inmob-dni')      as HTMLInputElement)?.value ?? '')
+                      const res = await crearInmobiliarioAction(fd)
+                      setInmobCreando(false)
+                      if (res?.error || !res?.id) {
+                        setInmobError(res?.error ?? 'Error al crear')
+                        return
+                      }
+                      const nuevo = {
+                        id: res.id,
+                        nombre: fd.get('nombre') as string,
+                        apellido: fd.get('apellido') as string,
+                      }
+                      setInmobiliarios((prev) => [...prev, nuevo])
+                      setInmobSeleccionado(res.id)
+                      setInmobNuevoOpen(false)
+                    }}
+                  >
+                    {inmobCreando ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Creando...</> : 'Crear'}
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
 
           <Separator />
@@ -562,7 +740,7 @@ export function ContratoWizard({ organizacionId }: WizardProps) {
               <div className="space-y-1">
                 <Label className="text-xs">Monto inicial</Label>
                 <div className="flex gap-2">
-                  <select name="moneda" defaultValue={resultado.moneda ?? 'ars'} className="h-8 rounded-md border border-zinc-200 bg-white px-2 text-sm text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900">
+                  <select name="moneda" defaultValue={resultado.moneda ?? 'ars'} className="h-8 rounded-lg border border-zinc-200 bg-white px-2 text-sm text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900">
                     <option value="ars">$ARS</option>
                     <option value="usd">USD</option>
                   </select>
@@ -573,7 +751,7 @@ export function ContratoWizard({ organizacionId }: WizardProps) {
               <div className="space-y-1">
                 <Label className="text-xs">Depósito <span className="text-zinc-400">(opc.)</span></Label>
                 <div className="flex gap-2">
-                  <select name="moneda_deposito" defaultValue={resultado.moneda_deposito ?? 'ars'} className="h-8 rounded-md border border-zinc-200 bg-white px-2 text-sm text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900">
+                  <select name="moneda_deposito" defaultValue={resultado.moneda_deposito ?? 'ars'} className="h-8 rounded-lg border border-zinc-200 bg-white px-2 text-sm text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900">
                     <option value="ars">$ARS</option>
                     <option value="usd">USD</option>
                   </select>
@@ -652,6 +830,31 @@ export function ContratoWizard({ organizacionId }: WizardProps) {
                 </select>
                 <p className="text-[11px] text-zinc-400">Quién sube las facturas de luz, gas, agua y otros servicios.</p>
               </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Servicios aplicables al contrato</Label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-1.5 bg-white border border-zinc-200 rounded-lg px-3 py-2.5">
+                {[
+                  { value: 'electricidad',              label: 'Electricidad' },
+                  { value: 'gas',                       label: 'Gas' },
+                  { value: 'agua',                      label: 'Agua' },
+                  { value: 'expensas_ordinarias',       label: 'Expensas ord.' },
+                  { value: 'expensas_extraordinarias',  label: 'Expensas extra.' },
+                  { value: 'municipal',                 label: 'ABL / Municipal' },
+                  { value: 'otro',                      label: 'Otro' },
+                ].map((s) => (
+                  <label key={s.value} className="flex items-center gap-1.5 text-xs text-zinc-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="servicios_aplicables"
+                      value={s.value}
+                      className="w-3.5 h-3.5 accent-zinc-900 cursor-pointer"
+                    />
+                    {s.label}
+                  </label>
+                ))}
+              </div>
+              <p className="text-[11px] text-zinc-400">El sistema va a generar pagos mensuales para cada servicio marcado.</p>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">

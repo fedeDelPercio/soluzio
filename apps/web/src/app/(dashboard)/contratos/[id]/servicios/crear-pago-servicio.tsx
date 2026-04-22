@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { crearPagoServicioAction } from './actions'
 
-const SELECT_CLASS = 'flex h-8 w-full rounded-md border border-zinc-200 bg-white px-2.5 py-1 text-sm text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900'
+const SELECT_CLASS = 'flex h-8 w-full rounded-lg border border-zinc-200 bg-white px-2.5 py-1 text-sm text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900'
 
 const SERVICIOS = [
   { value: 'electricidad',              label: 'Electricidad (luz)' },

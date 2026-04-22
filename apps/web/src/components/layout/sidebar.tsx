@@ -8,12 +8,12 @@ import type { Perfil } from '@alquileres/database'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
   LayoutDashboard, FileText, CreditCard, Wrench,
-  Building2, Settings, User, LogOut, X, MessageSquare,
+  Building2, Settings, User, LogOut, X, MessageSquare, Briefcase, Zap,
 } from 'lucide-react'
 import { logoutAction } from '@/app/(auth)/login/actions'
 
 const ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  LayoutDashboard, FileText, CreditCard, Wrench, Building2, Settings, User, MessageSquare,
+  LayoutDashboard, FileText, CreditCard, Wrench, Building2, Settings, User, MessageSquare, Briefcase, Zap,
 }
 
 const ROL_LABEL: Record<string, string> = {

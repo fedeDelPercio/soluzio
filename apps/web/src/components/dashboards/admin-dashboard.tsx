@@ -1,7 +1,8 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import type { Perfil } from '@alquileres/database'
-import { FileText, CreditCard, Wrench, Building2, AlertCircle, Clock, TrendingUp } from 'lucide-react'
+import { FileText, CreditCard, Wrench, Building2, AlertCircle, Clock, TrendingUp, Eye } from 'lucide-react'
 import { formatARS, formatFecha } from '@/lib/utils'
 
 interface AdminDashboardProps {
@@ -172,25 +173,48 @@ async function RecentesPagos() {
   const supabase = await createClient()
   const db = supabase as any
 
-  const { data: pagosRaw } = await db
-    .from('pagos')
-    .select(`
-      id, monto_esperado, fecha_vencimiento, estado,
-      contratos (
-        propiedades ( calle, numero ),
-        inquilino:perfiles!contratos_inquilino_id_fkey ( nombre, apellido )
-      )
-    `)
-    .eq('estado', 'comprobante_subido')
-    .order('actualizado_en', { ascending: false })
-    .limit(5)
+  const [{ data: pagosRaw }, { count: totalPorVerificar }] = await Promise.all([
+    db.from('pagos')
+      .select(`
+        id, monto_esperado, fecha_vencimiento, estado, contrato_id,
+        contratos (
+          propiedades ( calle, numero ),
+          inquilino:perfiles!contratos_inquilino_id_fkey ( nombre, apellido )
+        ),
+        comprobantes_pago ( id, ruta_archivo )
+      `)
+      .eq('estado', 'comprobante_subido')
+      .order('actualizado_en', { ascending: false })
+      .limit(5),
+    db.from('pagos')
+      .select('*', { count: 'exact', head: true })
+      .eq('estado', 'comprobante_subido'),
+  ])
 
   const pagos = (pagosRaw ?? []) as any[]
+
+  // Firmar URLs
+  const admin = createAdminClient()
+  const rutas = pagos.flatMap((p) => (p.comprobantes_pago ?? []).map((c: any) => c.ruta_archivo)).filter(Boolean)
+  const signedMap: Record<string, string> = {}
+  if (rutas.length > 0) {
+    const { data: signed } = await (admin.storage.from('comprobantes') as any).createSignedUrls(rutas, 3600)
+    ;(signed ?? []).forEach((s: { path: string; signedUrl: string }) => {
+      if (s.signedUrl) signedMap[s.path] = s.signedUrl
+    })
+  }
 
   return (
     <div className="bg-white rounded-lg border border-zinc-200">
       <div className="px-4 py-3 border-b border-zinc-100 flex items-center justify-between">
-        <h2 className="text-sm font-medium text-zinc-700">Comprobantes por verificar</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-sm font-medium text-zinc-700">Comprobantes por verificar</h2>
+          {(totalPorVerificar ?? 0) > 0 && (
+            <span className="text-xs font-semibold bg-blue-100 text-blue-700 rounded-full px-2 py-0.5">
+              {totalPorVerificar}
+            </span>
+          )}
+        </div>
         <Link href="/pagos" className="text-xs text-zinc-500 hover:text-zinc-900 transition-colors">Ver todos →</Link>
       </div>
       {pagos.length === 0 ? (
@@ -202,15 +226,29 @@ async function RecentesPagos() {
           {pagos.map((p: any) => {
             const prop = p.contratos?.propiedades
             const inq  = p.contratos?.inquilino
+            const comp = (p.comprobantes_pago ?? [])[0]
+            const url  = comp ? signedMap[comp.ruta_archivo] : null
             return (
-              <div key={p.id} className="px-4 py-3 flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-zinc-900">{inq?.nombre} {inq?.apellido}</p>
-                  <p className="text-xs text-zinc-400">{prop?.calle} {prop?.numero}</p>
+              <div key={p.id} className="px-4 py-3 flex items-center justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-zinc-900 truncate">{inq?.nombre} {inq?.apellido}</p>
+                  <p className="text-xs text-zinc-400 truncate">{prop?.calle} {prop?.numero}</p>
                 </div>
-                <p className="text-sm font-semibold text-zinc-900">
-                  ${(p.monto_esperado ?? 0).toLocaleString('es-AR')}
-                </p>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <p className="text-sm font-semibold text-zinc-900">
+                    ${(p.monto_esperado ?? 0).toLocaleString('es-AR')}
+                  </p>
+                  {url && (
+                    <a
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-xs font-medium text-zinc-600 hover:text-zinc-900 border border-zinc-200 hover:border-zinc-300 px-2 py-1 rounded-md transition-colors"
+                    >
+                      <Eye className="w-3 h-3" /> Ver
+                    </a>
+                  )}
+                </div>
               </div>
             )
           })}

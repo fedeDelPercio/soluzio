@@ -40,7 +40,9 @@ export default async function ContratoPage({ params }: Props) {
   type ContratoConRelaciones = Contrato & {
     propiedades: {
       calle: string; numero: string; piso: string | null; depto: string | null; ciudad: string; provincia: string
+      inmobiliario_id: string | null
       propietario: { id: string; nombre: string; apellido: string; dni: string | null; telefono: string | null } | null
+      inmobiliario: { id: string; nombre: string; apellido: string; telefono: string | null } | null
     } | null
     inquilino:    { id: string; nombre: string; apellido: string; dni: string | null; telefono: string | null } | null
     coinquilino:  { id: string; nombre: string; apellido: string; dni: string | null; telefono: string | null } | null
@@ -52,8 +54,9 @@ export default async function ContratoPage({ params }: Props) {
     .select(`
       *,
       propiedades (
-        calle, numero, piso, depto, ciudad, provincia,
-        propietario:perfiles!propiedades_propietario_id_fkey ( id, nombre, apellido, dni, telefono )
+        calle, numero, piso, depto, ciudad, provincia, inmobiliario_id,
+        propietario:perfiles!propiedades_propietario_id_fkey ( id, nombre, apellido, dni, telefono ),
+        inmobiliario:perfiles!propiedades_inmobiliario_id_fkey ( id, nombre, apellido, telefono )
       ),
       inquilino:perfiles!contratos_inquilino_id_fkey ( id, nombre, apellido, dni, telefono ),
       coinquilino:perfiles!contratos_coinquilino_id_fkey ( id, nombre, apellido, dni, telefono ),
@@ -65,11 +68,12 @@ export default async function ContratoPage({ params }: Props) {
   if (!contratoRaw) notFound()
   const contrato = contratoRaw as unknown as ContratoConRelaciones
 
-  const prop        = contrato.propiedades
-  const inq         = contrato.inquilino
-  const coinq       = contrato.coinquilino
-  const gar         = contrato.garante
-  const propietario = prop?.propietario ?? null
+  const prop         = contrato.propiedades
+  const inq          = contrato.inquilino
+  const coinq        = contrato.coinquilino
+  const gar          = contrato.garante
+  const propietario  = prop?.propietario ?? null
+  const inmobiliario = prop?.inmobiliario ?? null
   const esAdmin = perfil.rol === 'administrador'
 
   const INDICE_LABEL: Record<string, string> = { ipc: 'IPC (INDEC)', icl: 'ICL (BCRA)', fijo: 'Fijo' }
@@ -260,6 +264,39 @@ export default async function ContratoPage({ params }: Props) {
         </div>
       </div>
 
+      {/* Inmobiliario / agente responsable */}
+      <div className="bg-white rounded-lg border border-zinc-200">
+        <div className="px-4 py-3 border-b border-zinc-100 flex items-center justify-between">
+          <h2 className="text-sm font-medium text-zinc-700">Inmobiliario / agente responsable</h2>
+          {esAdmin && (
+            <Link href={`/contratos/${id}/editar`} className="text-xs text-zinc-500 hover:text-zinc-900 transition-colors">
+              {inmobiliario ? 'Cambiar' : 'Asignar'}
+            </Link>
+          )}
+        </div>
+        {inmobiliario ? (
+          <div className="px-4 py-3 flex items-center gap-3">
+            <User className="w-4 h-4 text-zinc-400 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-zinc-900">{inmobiliario.nombre} {inmobiliario.apellido}</p>
+              <p className="text-xs text-zinc-500">
+                Agente externo que derivó el alquiler · acceso en modo solo lectura
+                {inmobiliario.telefono ? ` · ${inmobiliario.telefono}` : ''}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="px-4 py-4 text-center">
+            <p className="text-sm text-zinc-400">Sin inmobiliario asignado</p>
+            {esAdmin && (
+              <p className="text-xs text-zinc-400 mt-1">
+                Si fue derivado por un agente externo, podés asignarlo para darle acceso solo lectura.
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Resumen IA de cláusulas */}
       {(() => {
         const analisis = contrato.ia_analisis_resultado as ResultadoAnalisisContrato | null
@@ -422,6 +459,7 @@ async function PagosSection({ contratoId, organizacionId, esAdmin, esInquilino }
       periodos_pago ( anio, mes ),
       comprobantes_pago ( id, ruta_archivo, pago_recibido )`)
     .eq('contrato_id', contratoId)
+    .eq('concepto', 'alquiler')
     .lte('fecha_vencimiento', finDeMes)
     .order('fecha_vencimiento', { ascending: false })
 

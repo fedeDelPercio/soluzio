@@ -16,9 +16,10 @@ export async function registrarFotoEstadoInicialAction(formData: FormData) {
   if (!contratoId || !rutaArchivo) return { error: 'Datos incompletos' }
 
   const admin = createAdminClient()
+  const db    = admin as any
 
   // Verificar que el contrato existe y que el usuario tiene acceso
-  const { data: contrato } = await admin
+  const { data: contrato } = await db
     .from('contratos')
     .select('id, organizacion_id, inquilino_id, coinquilino_id')
     .eq('id', contratoId)

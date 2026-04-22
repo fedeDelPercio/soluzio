@@ -26,7 +26,8 @@ export default async function InquilinoPage({ params }: { params: Promise<{ id: 
   const { id } = await params
   const { user, perfil } = await getSession()
   if (!user || !perfil) redirect('/login')
-  if (perfil.rol !== 'administrador') redirect('/overview')
+  if (perfil.rol !== 'administrador' && perfil.rol !== 'inmobiliario') redirect('/overview')
+  const esAdmin = perfil.rol === 'administrador'
 
   const supabase = await createClient()
   const db = supabase as any
@@ -95,7 +96,7 @@ export default async function InquilinoPage({ params }: { params: Promise<{ id: 
             {inq.nombre} {inq.apellido}
           </h1>
         </div>
-        <InquilinoActionsMenu inquilinoId={id} tieneContratoActivo={tieneContratoActivo} />
+        {esAdmin && <InquilinoActionsMenu inquilinoId={id} tieneContratoActivo={tieneContratoActivo} />}
       </div>
 
       {/* Datos personales */}

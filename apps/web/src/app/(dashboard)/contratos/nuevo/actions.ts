@@ -45,11 +45,13 @@ export async function crearContratoDesdeAnalisisAction(formData: FormData) {
   propietarioId = propId
 
   // 2. Crear propiedad
+  const inmobiliarioId = (formData.get('inmobiliario_id') as string) || null
   const { data: propiedadData, error: propError } = await db
     .from('propiedades')
     .insert({
       organizacion_id: perfil.organizacion_id,
       propietario_id:  propietarioId,
+      inmobiliario_id: inmobiliarioId,
       tipo_propiedad:  formData.get('tipo_propiedad') as string,
       calle:           formData.get('calle') as string,
       numero:          formData.get('numero') as string,
@@ -125,6 +127,11 @@ export async function crearContratoDesdeAnalisisAction(formData: FormData) {
   const facturasRaw   = formData.get('facturas_servicios_las_carga') as string
   const facturasLasCarga = (facturasRaw === 'inquilino' || facturasRaw === 'propietario') ? facturasRaw : 'inquilino'
 
+  const SERVICIOS_VALIDOS = ['electricidad', 'gas', 'agua', 'expensas_ordinarias', 'expensas_extraordinarias', 'municipal', 'otro']
+  const serviciosAplicables = formData.getAll('servicios_aplicables')
+    .map((v) => v as string)
+    .filter((v) => SERVICIOS_VALIDOS.includes(v))
+
   // Calcular proxima_fecha_ajuste = fecha_inicio + periodo_ajuste_meses
   const fechaInicioDate = new Date(fechaInicioStr)
   fechaInicioDate.setMonth(fechaInicioDate.getMonth() + periodoMeses)
@@ -150,6 +157,7 @@ export async function crearContratoDesdeAnalisisAction(formData: FormData) {
       modalidad_cobro:      modalidad,
       tasa_punitorio_mensual: tasaPunitorio,
       facturas_servicios_las_carga: facturasLasCarga,
+      servicios_aplicables: serviciosAplicables,
       proxima_fecha_ajuste: proximaFechaAjuste,
       monto_deposito:       deposito ? parseFloat(deposito) : null,
       vencimiento_seguro_incendio: (formData.get('vencimiento_seguro_incendio') as string) || null,
@@ -219,6 +227,19 @@ export async function crearContratoDesdeAnalisisAction(formData: FormData) {
       monto_esperado:    monto,
       fecha_vencimiento: fechaVencStr,
     })
+
+    // Pagos de servicios aplicables (monto_esperado = 0, se completa al subir la factura)
+    for (const servicio of serviciosAplicables) {
+      pagosRows.push({
+        organizacion_id:   perfil.organizacion_id,
+        periodo_pago_id:   periodoId,
+        contrato_id:       contratoId,
+        concepto:          servicio,
+        estado:            'pendiente',
+        monto_esperado:    0,
+        fecha_vencimiento: fechaVencStr,
+      })
+    }
 
     cursor.setMonth(cursor.getMonth() + 1)
   }

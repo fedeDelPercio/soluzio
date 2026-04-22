@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { editarContratoAction } from './actions'
 
-const SELECT_CLASS = 'flex h-9 w-full rounded-md border border-zinc-200 bg-white px-3 py-1 text-sm text-zinc-900 shadow-sm focus:outline-none focus:ring-1 focus:ring-zinc-900'
+const SELECT_CLASS = 'flex h-8 w-full rounded-lg border border-zinc-200 bg-white px-2.5 py-1 text-sm text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -21,21 +21,30 @@ export default async function EditarContratoPage({ params }: Props) {
   if (perfil.rol !== 'administrador') redirect(`/contratos/${id}`)
 
   const supabase = await createClient()
-  const { data: contrato } = await (supabase as any)
+  const db       = supabase as any
+  const { data: contrato } = await db
     .from('contratos')
     .select(`
       id, estado, fecha_inicio, fecha_fin, monto_inicial, monto_actual,
       monto_deposito, indice_ajuste, periodo_ajuste_meses,
       dia_vencimiento_pago,
       requiere_seguro_incendio, modalidad_cobro, tasa_punitorio_mensual,
-      facturas_servicios_las_carga,
+      facturas_servicios_las_carga, servicios_aplicables,
       vencimiento_seguro_incendio,
-      propiedades ( calle, numero, piso, depto, ciudad )
+      propiedad_id,
+      propiedades ( calle, numero, piso, depto, ciudad, inmobiliario_id )
     `)
     .eq('id', id)
     .single()
 
   if (!contrato) notFound()
+
+  const { data: inmobiliariosRaw } = await db
+    .from('perfiles')
+    .select('id, nombre, apellido')
+    .eq('rol', 'inmobiliario')
+    .order('apellido')
+  const inmobiliarios = (inmobiliariosRaw ?? []) as { id: string; nombre: string; apellido: string }[]
 
   const prop = contrato.propiedades
   const titulo = [prop?.calle, prop?.numero, prop?.piso && `Piso ${prop.piso}`, prop?.depto]
@@ -223,9 +232,60 @@ export default async function EditarContratoPage({ params }: Props) {
               <option value="propietario">Propietario</option>
             </select>
           </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Servicios aplicables al contrato</Label>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-1.5 bg-white border border-zinc-200 rounded-lg px-3 py-2.5">
+              {[
+                { value: 'electricidad',              label: 'Electricidad' },
+                { value: 'gas',                       label: 'Gas' },
+                { value: 'agua',                      label: 'Agua' },
+                { value: 'expensas_ordinarias',       label: 'Expensas ord.' },
+                { value: 'expensas_extraordinarias',  label: 'Expensas extra.' },
+                { value: 'municipal',                 label: 'ABL / Municipal' },
+                { value: 'otro',                      label: 'Otro' },
+              ].map((s) => (
+                <label key={s.value} className="flex items-center gap-1.5 text-xs text-zinc-700 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="servicios_aplicables"
+                    value={s.value}
+                    defaultChecked={(contrato.servicios_aplicables ?? []).includes(s.value)}
+                    className="w-3.5 h-3.5 accent-zinc-900 cursor-pointer"
+                  />
+                  {s.label}
+                </label>
+              ))}
+            </div>
+            <p className="text-[11px] text-zinc-400">Al marcar un servicio nuevo se generan pagos desde este mes en adelante. Al desmarcarlo, se borran los pagos futuros pendientes (los ya cargados se conservan).</p>
+          </div>
         </div>
 
         <Separator />
+
+        {/* Inmobiliario */}
+        {inmobiliarios.length > 0 && (
+          <>
+            <div className="space-y-3">
+              <h2 className="text-sm font-semibold text-zinc-800">Inmobiliario</h2>
+              <div className="space-y-1">
+                <Label className="text-xs">Agente externo que cedió la propiedad <span className="text-zinc-400">(opc.)</span></Label>
+                <select
+                  name="inmobiliario_id"
+                  defaultValue={(contrato.propiedades as any)?.inmobiliario_id ?? ''}
+                  className={SELECT_CLASS}
+                >
+                  <option value="">Sin inmobiliario asignado</option>
+                  {inmobiliarios.map((i) => (
+                    <option key={i.id} value={i.id}>{i.nombre} {i.apellido}</option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-zinc-400">Podrá ver los datos del contrato en modo solo lectura.</p>
+              </div>
+            </div>
+
+            <Separator />
+          </>
+        )}
 
         {/* Seguro */}
         <div className="space-y-3">

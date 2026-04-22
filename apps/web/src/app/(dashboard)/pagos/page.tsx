@@ -2,17 +2,30 @@ import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
 import { getSession } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { formatARS, formatFecha } from '@/lib/utils'
-import { CreditCard, CheckCircle2, SlidersHorizontal } from 'lucide-react'
+import { CreditCard, CheckCircle2, SlidersHorizontal, Eye } from 'lucide-react'
 import Link from 'next/link'
 import { verificarPagoAction } from './actions'
 import { UploadComprobante } from '../contratos/[id]/pagos/upload-comprobante'
 import { PagosFiltros } from './pagos-filtros'
 
+async function firmarComprobantes(pagos: PagoRow[]): Promise<Record<string, string>> {
+  const rutas = [...new Set(pagos.flatMap((p) => (p.comprobantes_pago ?? []).map((c) => c.ruta_archivo)).filter(Boolean))]
+  if (rutas.length === 0) return {}
+  const admin = createAdminClient()
+  const { data: signed } = await (admin.storage.from('comprobantes') as any).createSignedUrls(rutas, 3600)
+  const map: Record<string, string> = {}
+  ;(signed ?? []).forEach((s: { path: string; signedUrl: string }) => {
+    if (s.signedUrl) map[s.path] = s.signedUrl
+  })
+  return map
+}
+
 const ESTADO_LABEL: Record<string, string> = {
   pendiente:          'Pendiente',
   futuro:             'Futuro',
-  comprobante_subido: 'Con comprobante',
+  comprobante_subido: 'Comprobante cargado',
   verificado:         'Verificado',
   atrasado:           'Atrasado',
   disputado:          'Disputado',
@@ -69,6 +82,8 @@ export default async function PagosPage({ searchParams }: { searchParams: Search
         `)
         .in('estado', ['pendiente', 'atrasado'])
         .lte('fecha_vencimiento', finDeMes)
+        // Excluir placeholders de servicios sin factura ($0): se gestionan desde /servicios
+        .or('concepto.eq.alquiler,monto_esperado.gt.0')
         .order('fecha_vencimiento', { ascending: true })
         .limit(100),
       db.from('pagos')
@@ -94,7 +109,7 @@ export default async function PagosPage({ searchParams }: { searchParams: Search
             {pagos.length} pago{pagos.length !== 1 ? 's' : ''} pendiente{pagos.length !== 1 ? 's' : ''}
           </p>
         </div>
-        <PagosList pagos={pagos} esAdmin={false} esInquilino />
+        <PagosList pagos={pagos} esAdmin={false} esInquilino signedMap={{}} />
       </div>
     )
   }
@@ -140,7 +155,11 @@ export default async function PagosPage({ searchParams }: { searchParams: Search
       query = query.gte('fecha_vencimiento', inicio).lte('fecha_vencimiento', fin)
     }
 
-    query = query.order('fecha_vencimiento', { ascending: true }).limit(200)
+    // Excluir placeholders de servicios sin factura ($0): se gestionan desde /servicios
+    query = query
+      .or('concepto.eq.alquiler,monto_esperado.gt.0')
+      .order('fecha_vencimiento', { ascending: true })
+      .limit(200)
 
     const [{ data: pagosRaw }, { data: propiedadesRaw }] = await Promise.all([
       query,
@@ -158,12 +177,13 @@ export default async function PagosPage({ searchParams }: { searchParams: Search
       pagos = pagos.filter((p) => ids.has(p.contrato_id))
     }
 
+    const signedMap = await firmarComprobantes(pagos)
     return (
-      <div className="p-6 space-y-4 max-w-3xl">
+      <div className="p-6 space-y-4 max-w-4xl">
         <Suspense>
           <PagosFiltros propiedades={propiedades} totalCount={pagos.length} />
         </Suspense>
-        <PagosList pagos={pagos} esAdmin={esAdmin} esInquilino={false} />
+        <PagosList pagos={pagos} esAdmin={esAdmin} esInquilino={false} signedMap={signedMap} />
       </div>
     )
   }
@@ -186,13 +206,16 @@ export default async function PagosPage({ searchParams }: { searchParams: Search
     `)
     .in('estado', ['pendiente', 'atrasado', 'comprobante_subido'])
     .lte('fecha_vencimiento', finDeMes)
+    // Excluir placeholders de servicios sin factura ($0): se gestionan desde /servicios
+    .or('concepto.eq.alquiler,monto_esperado.gt.0')
     .order('fecha_vencimiento', { ascending: true })
     .limit(200)
 
   const pagos = (pagosRaw ?? []) as PagoRow[]
+  const signedMap = await firmarComprobantes(pagos)
 
   return (
-    <div className="p-6 space-y-4 max-w-3xl">
+    <div className="p-6 space-y-4 max-w-4xl">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold text-zinc-900">Pagos</h1>
@@ -209,7 +232,7 @@ export default async function PagosPage({ searchParams }: { searchParams: Search
         </Link>
       </div>
 
-      <PagosList pagos={pagos} esAdmin={esAdmin} esInquilino={false} />
+      <PagosList pagos={pagos} esAdmin={esAdmin} esInquilino={false} signedMap={signedMap} />
     </div>
   )
 }
@@ -220,10 +243,12 @@ function PagosList({
   pagos,
   esAdmin,
   esInquilino,
+  signedMap,
 }: {
   pagos: PagoRow[]
   esAdmin: boolean
   esInquilino: boolean
+  signedMap: Record<string, string>
 }) {
   const hoy = new Date().toISOString().split('T')[0]
   if (pagos.length === 0) {
@@ -249,12 +274,16 @@ function PagosList({
         const esFuturo   = pago.estado === 'pendiente' && pago.fecha_vencimiento > hoy
         const esAtrasado = pago.estado === 'pendiente' && pago.fecha_vencimiento < hoy
         const estadoVis  = esFuturo ? 'futuro' : esAtrasado ? 'atrasado' : pago.estado
-        const puedeSubir = esInquilino && (pago.estado === 'pendiente' || pago.estado === 'atrasado') && !esFuturo
+        // El inquilino puede adelantar el pago aunque todavía no haya vencido.
+        const puedeSubir = esInquilino && (pago.estado === 'pendiente' || pago.estado === 'atrasado')
 
         return (
           <div key={pago.id} className="px-4 py-3">
             <div className="flex items-center justify-between gap-4">
-              <div className="space-y-0.5 min-w-0 flex-1">
+              <Link
+                href={`/contratos/${pago.contrato_id}`}
+                className="space-y-0.5 min-w-0 flex-1 hover:text-zinc-700 transition-colors"
+              >
                 <p className="text-sm font-medium text-zinc-900 truncate">
                   {prop?.calle} {prop?.numero} — {prop?.ciudad}
                 </p>
@@ -262,7 +291,7 @@ function PagosList({
                   {esAdmin && <>{inq?.nombre} {inq?.apellido} · </>}
                   Vence {formatFecha(pago.fecha_vencimiento)}
                 </p>
-              </div>
+              </Link>
 
               <div className="flex items-center gap-3 flex-shrink-0">
                 <p className="text-sm font-semibold text-zinc-900 hidden sm:block">
@@ -271,6 +300,22 @@ function PagosList({
                 <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ESTADO_COLOR[estadoVis]}`}>
                   {ESTADO_LABEL[estadoVis]}
                 </span>
+
+                {tieneComp && (() => {
+                  const url = signedMap[comps[0].ruta_archivo]
+                  if (!url) return null
+                  return (
+                    <a
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 text-xs font-medium text-zinc-600 hover:text-zinc-900 border border-zinc-200 hover:border-zinc-300 px-2.5 py-1 rounded-md transition-colors"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      Ver
+                    </a>
+                  )
+                })()}
 
                 {esAdmin && tieneComp && pago.estado === 'comprobante_subido' && (
                   <form action={verificarPagoAction.bind(null, pago.id)}>

@@ -22,7 +22,7 @@ const ESTADO_ICON: Record<string, React.ElementType> = {
 }
 const ESTADO_LABEL: Record<string, string> = {
   pendiente:          'Pendiente',
-  comprobante_subido: 'Comprobante subido',
+  comprobante_subido: 'Comprobante cargado',
   verificado:         'Verificado',
   atrasado:           'Atrasado',
   disputado:          'Disputado',
@@ -80,6 +80,7 @@ export default async function ContratoPagosPage({ params }: { params: Promise<{ 
       comprobantes_pago ( id, ruta_archivo, pago_recibido )
     `)
     .eq('contrato_id', contratoId)
+    .eq('concepto', 'alquiler')
     .lte('fecha_vencimiento', finDeMes)
     .order('fecha_vencimiento', { ascending: false })
 
