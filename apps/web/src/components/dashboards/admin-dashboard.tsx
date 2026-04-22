@@ -25,7 +25,8 @@ export async function AdminDashboard({ perfil }: AdminDashboardProps) {
     db.from('pagos')
       .select('*', { count: 'exact', head: true })
       .in('estado', ['pendiente', 'comprobante_subido', 'atrasado'])
-      .lte('fecha_vencimiento', hoyStr),
+      .lte('fecha_vencimiento', hoyStr)
+      .or('concepto.eq.alquiler,monto_esperado.gt.0'),
     db.from('solicitudes')
       .select('*', { count: 'exact', head: true })
       .in('estado', ['abierto', 'clasificado', 'asignado', 'en_proceso']),
@@ -46,11 +47,13 @@ export async function AdminDashboard({ perfil }: AdminDashboardProps) {
   })()
 
   // Pagos atrasados (vencimiento pasado y estado pendiente)
+  // Excluye placeholders de servicios en $0 (solo alquiler o servicios con monto cargado).
   const { count: pagosAtrasados } = await db
     .from('pagos')
     .select('*', { count: 'exact', head: true })
     .eq('estado', 'pendiente')
     .lt('fecha_vencimiento', hoyStr)
+    .or('concepto.eq.alquiler,monto_esperado.gt.0')
 
   // Contratos con ajuste próximo (próximos 30 días o ya vencido)
   const { data: ajustesProximosRaw } = await db
