@@ -333,6 +333,7 @@ export default async function ContratoPage({ params }: Props) {
         contratoId={id}
         organizacionId={contrato.organizacion_id as string}
         esAdmin={esAdmin}
+        puedeSubir={esAdmin || perfil.rol === 'inquilino'}
       />
 
       {/* Acciones */}
@@ -383,10 +384,12 @@ async function DocumentosSection({
   contratoId,
   organizacionId,
   esAdmin,
+  puedeSubir,
 }: {
   contratoId: string
   organizacionId: string
   esAdmin: boolean
+  puedeSubir: boolean
 }) {
   const supabase = await createClient()
   const { data: docsRaw } = await (supabase as any)
@@ -411,7 +414,7 @@ async function DocumentosSection({
             <span className="text-xs text-zinc-400">{verificados}/{docs.length} verificados</span>
           )}
         </div>
-        <UploadDocumento contratoId={contratoId} organizacionId={organizacionId} esAdmin={esAdmin} />
+        {puedeSubir && <UploadDocumento contratoId={contratoId} organizacionId={organizacionId} esAdmin={esAdmin} />}
       </div>
 
       {docs.length === 0 ? (
