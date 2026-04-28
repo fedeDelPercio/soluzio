@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import { Menu } from 'lucide-react'
 import { Sidebar } from './sidebar'
+import { AvisoToast } from './aviso-toast'
 import type { NavItem } from './nav-items'
 import type { Perfil } from '@alquileres/database'
 
@@ -46,6 +47,10 @@ export function DashboardShell({ perfil, navItems, children }: Props) {
           {children}
         </main>
       </div>
+
+      <Suspense fallback={null}>
+        <AvisoToast />
+      </Suspense>
     </div>
   )
 }

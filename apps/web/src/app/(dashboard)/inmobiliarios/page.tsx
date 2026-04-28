@@ -8,7 +8,7 @@ import { CrearInmobiliario } from './crear-inmobiliario'
 export default async function InmobiliariosPage() {
   const { user, perfil } = await getSession()
   if (!user || !perfil) redirect('/login')
-  if (perfil.rol !== 'administrador') redirect('/overview')
+  if (perfil.rol !== 'administrador') redirect('/overview?aviso=acceso_denegado')
 
   const supabase = await createClient()
   const db       = supabase as any

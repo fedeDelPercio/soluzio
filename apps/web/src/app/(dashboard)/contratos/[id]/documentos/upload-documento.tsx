@@ -240,7 +240,7 @@ export function UploadDocumento({ contratoId, organizacionId, esAdmin }: Props) 
         ) : (
           <div className="flex items-center justify-center gap-2 text-zinc-400">
             <Upload className="w-4 h-4" />
-            <span className="text-xs">PDF o imagen · máx. 20 MB</span>
+            <span className="text-xs">PDF o imagen · máx. 50 MB</span>
           </div>
         )}
       </div>

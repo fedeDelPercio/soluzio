@@ -239,7 +239,12 @@ export default async function ServiciosPage({ params }: Props) {
       {!esInquilino && (
         <div className="flex items-start gap-2 text-xs text-zinc-600 bg-zinc-50 border border-zinc-200 rounded-md px-3 py-2">
           <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5 text-zinc-400" />
-          <p>Las facturas las carga el <strong>{rolDesignado === 'inquilino' ? 'inquilino' : 'propietario'}</strong>. Se puede cambiar en la edición del contrato.</p>
+          <p>
+            {esAdmin && (<>Las facturas las carga el <strong>{rolDesignado === 'inquilino' ? 'inquilino' : 'propietario'}</strong>. Se puede cambiar en la edición del contrato.</>)}
+            {esPropietario && rolDesignado === 'propietario' && (<>Te corresponde subir las facturas de los servicios cada mes.</>)}
+            {esPropietario && rolDesignado === 'inquilino' && (<>Las facturas las carga el <strong>inquilino</strong>. Vos podés ver el estado pero no cargarlas.</>)}
+            {esInmobiliario && (<>Las facturas las carga el <strong>{rolDesignado === 'inquilino' ? 'inquilino' : 'propietario'}</strong>. Tu acceso es de solo lectura.</>)}
+          </p>
         </div>
       )}
 

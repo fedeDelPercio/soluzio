@@ -8,7 +8,7 @@ import { InquilinoActionsMenu } from './inquilino-actions-menu'
 export default async function InquilinosPage() {
   const { user, perfil } = await getSession()
   if (!user || !perfil) redirect('/login')
-  if (perfil.rol !== 'administrador' && perfil.rol !== 'inmobiliario') redirect('/overview')
+  if (perfil.rol !== 'administrador' && perfil.rol !== 'inmobiliario') redirect('/overview?aviso=acceso_denegado')
   const esAdmin = perfil.rol === 'administrador'
 
   const supabase = await createClient()

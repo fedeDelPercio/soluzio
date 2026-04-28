@@ -12,7 +12,7 @@ export default async function EditarInquilinoPage({ params }: { params: Promise<
   const { id } = await params
   const { user, perfil } = await getSession()
   if (!user || !perfil) redirect('/login')
-  if (perfil.rol !== 'administrador') redirect('/overview')
+  if (perfil.rol !== 'administrador') redirect('/overview?aviso=acceso_denegado')
 
   const supabase = await createClient()
   const { data: inq } = await (supabase as any)

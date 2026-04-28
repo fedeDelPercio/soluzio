@@ -73,12 +73,19 @@ export function LoginForm() {
         {isPending ? 'Ingresando...' : 'Ingresar'}
       </Button>
 
-      <p className="text-center text-sm text-zinc-500">
-        ¿Primera vez?{' '}
-        <Link href="/setup" className="text-zinc-900 underline underline-offset-4">
-          Configurar la plataforma
-        </Link>
-      </p>
+      <div className="text-center space-y-1">
+        <p className="text-sm">
+          <Link href="/forgot-password" className="text-zinc-600 hover:text-zinc-900 underline underline-offset-4">
+            Olvidé mi contraseña
+          </Link>
+        </p>
+        <p className="text-sm text-zinc-500">
+          ¿Primera vez?{' '}
+          <Link href="/setup" className="text-zinc-900 underline underline-offset-4">
+            Configurar la plataforma
+          </Link>
+        </p>
+      </div>
     </form>
   )
 }

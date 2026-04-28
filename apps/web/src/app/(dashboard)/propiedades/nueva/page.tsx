@@ -6,7 +6,7 @@ import type { Perfil } from '@alquileres/database'
 
 export default async function NuevaPropiedadPage() {
   const { user, perfil } = await getSession()
-  if (!user || !perfil || perfil.rol !== 'administrador') redirect('/overview')
+  if (!user || !perfil || perfil.rol !== 'administrador') redirect('/overview?aviso=acceso_denegado')
 
   const supabase = await createClient()
 

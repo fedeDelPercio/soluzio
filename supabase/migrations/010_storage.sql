@@ -5,7 +5,7 @@
 
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES
-  ('documentos',    'documentos',    false, 20971520, ARRAY['application/pdf','image/jpeg','image/png','image/webp']),
+  ('documentos',    'documentos',    false, 52428800, ARRAY['application/pdf','image/jpeg','image/png','image/webp']),
   ('comprobantes',  'comprobantes',  false, 5242880,  ARRAY['application/pdf','image/jpeg','image/png','image/webp']),
   ('mantenimiento', 'mantenimiento', false, 10485760, ARRAY['image/jpeg','image/png','image/webp'])
 ON CONFLICT (id) DO NOTHING;

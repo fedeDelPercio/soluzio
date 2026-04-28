@@ -13,7 +13,7 @@ interface Props {
 export default async function AnalisisPage({ params }: Props) {
   const { id } = await params
   const { user, perfil } = await getSession()
-  if (!user || !perfil || perfil.rol !== 'administrador') redirect('/overview')
+  if (!user || !perfil || perfil.rol !== 'administrador') redirect('/overview?aviso=acceso_denegado')
 
   const supabase = await createClient()
 

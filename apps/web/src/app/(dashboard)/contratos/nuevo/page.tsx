@@ -5,7 +5,7 @@ import { ContratoWizard } from './contrato-wizard'
 
 export default async function NuevoContratoPage() {
   const { user, perfil } = await getSession()
-  if (!user || !perfil || perfil.rol !== 'administrador') redirect('/overview')
+  if (!user || !perfil || perfil.rol !== 'administrador') redirect('/overview?aviso=acceso_denegado')
 
   const supabase = await createClient()
   const { data: inmobiliariosRaw } = await (supabase as any)

@@ -34,11 +34,17 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   const pathname = request.nextUrl.pathname
-  const isAuthRoute = pathname.startsWith('/login') || pathname.startsWith('/invite')
+  const isAuthRoute =
+    pathname.startsWith('/login') ||
+    pathname.startsWith('/invite') ||
+    pathname.startsWith('/forgot-password')
+  // /reset-password siempre accesible: el flujo de recuperación inyecta un
+  // session token y necesita correr aunque el usuario quede "logueado".
+  const isResetPassword = pathname.startsWith('/reset-password')
   const isPublicRoute = pathname === '/'
 
   // Redirigir a login si no está autenticado y accede a una ruta protegida
-  if (!user && !isAuthRoute && !isPublicRoute) {
+  if (!user && !isAuthRoute && !isPublicRoute && !isResetPassword) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
