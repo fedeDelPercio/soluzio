@@ -24,18 +24,20 @@ export default async function EstadoInicialPage({ params }: Props) {
     .from('contratos')
     .select(`
       id, organizacion_id, inquilino_id, coinquilino_id,
-      propiedades ( calle, numero, piso, depto, ciudad )
+      propiedades ( calle, numero, piso, depto, ciudad, propietario_id, inmobiliario_id )
     `)
     .eq('id', contratoId)
     .single()
 
   if (!contrato) notFound()
 
+  const prop_                  = (contrato.propiedades as any) ?? {}
   const esInquilinoDelContrato = contrato.inquilino_id === user.id || contrato.coinquilino_id === user.id
   const esAdmin                = perfil.rol === 'administrador'
-  const esPropietario          = perfil.rol === 'propietario'
+  const esPropietario          = perfil.rol === 'propietario' && prop_.propietario_id === user.id
+  const esInmobiliario         = perfil.rol === 'inmobiliario' && prop_.inmobiliario_id === user.id
 
-  if (!esInquilinoDelContrato && !esAdmin && !esPropietario) {
+  if (!esInquilinoDelContrato && !esAdmin && !esPropietario && !esInmobiliario) {
     redirect(`/contratos/${contratoId}`)
   }
 

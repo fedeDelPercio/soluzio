@@ -12,8 +12,26 @@ export default async function InquilinosPage() {
   const esAdmin = perfil.rol === 'administrador'
 
   const supabase = await createClient()
+  const db       = supabase as any
 
-  const { data: inquilinosRaw } = await (supabase as any)
+  // Para inmobiliario, restringir a inquilinos de sus propiedades.
+  // Primero obtenemos los inquilino_ids y coinquilino_ids de contratos
+  // de propiedades donde el usuario es inmobiliario.
+  let idsPermitidos: Set<string> | null = null
+  if (perfil.rol === 'inmobiliario') {
+    const { data: ctrtRaw } = await db
+      .from('contratos')
+      .select('inquilino_id, coinquilino_id, propiedades!inner ( inmobiliario_id )')
+      .eq('propiedades.inmobiliario_id', user.id)
+
+    idsPermitidos = new Set<string>()
+    for (const c of (ctrtRaw ?? []) as any[]) {
+      if (c.inquilino_id) idsPermitidos.add(c.inquilino_id)
+      if (c.coinquilino_id) idsPermitidos.add(c.coinquilino_id)
+    }
+  }
+
+  let query = db
     .from('perfiles')
     .select(`
       id, nombre, apellido, dni, telefono,
@@ -28,8 +46,17 @@ export default async function InquilinosPage() {
     `)
     .eq('rol', 'inquilino')
     .eq('organizacion_id', perfil.organizacion_id)
-    .order('apellido', { ascending: true })
 
+  if (idsPermitidos) {
+    if (idsPermitidos.size === 0) {
+      // Inmobiliario sin contratos asociados => lista vacía
+      query = query.eq('id', '00000000-0000-0000-0000-000000000000')
+    } else {
+      query = query.in('id', Array.from(idsPermitidos))
+    }
+  }
+
+  const { data: inquilinosRaw } = await query.order('apellido', { ascending: true })
   const inquilinos = (inquilinosRaw ?? []) as any[]
 
   return (

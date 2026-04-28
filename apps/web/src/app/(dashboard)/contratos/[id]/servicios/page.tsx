@@ -47,19 +47,20 @@ export default async function ServiciosPage({ params }: Props) {
     .select(`
       id, organizacion_id, inquilino_id, coinquilino_id,
       facturas_servicios_las_carga,
-      propiedad_id, propiedades ( propietario_id, calle, numero, piso, depto, ciudad )
+      propiedad_id, propiedades ( propietario_id, inmobiliario_id, calle, numero, piso, depto, ciudad )
     `)
     .eq('id', contratoId)
     .single()
 
   if (!contrato) notFound()
 
-  const esAdmin       = perfil.rol === 'administrador'
-  const esInquilino   = user.id === contrato.inquilino_id || user.id === contrato.coinquilino_id
-  const esPropietario = user.id === (contrato.propiedades as any)?.propietario_id
-  const rolDesignado  = contrato.facturas_servicios_las_carga ?? 'inquilino'
+  const esAdmin        = perfil.rol === 'administrador'
+  const esInquilino    = user.id === contrato.inquilino_id || user.id === contrato.coinquilino_id
+  const esPropietario  = user.id === (contrato.propiedades as any)?.propietario_id
+  const esInmobiliario = user.id === (contrato.propiedades as any)?.inmobiliario_id
+  const rolDesignado   = contrato.facturas_servicios_las_carga ?? 'inquilino'
 
-  if (!esAdmin && !esInquilino && !esPropietario) redirect(`/contratos/${contratoId}`)
+  if (!esAdmin && !esInquilino && !esPropietario && !esInmobiliario) redirect(`/contratos/${contratoId}`)
 
   const puedeCargar   = esAdmin
     || (rolDesignado === 'inquilino' && esInquilino)
