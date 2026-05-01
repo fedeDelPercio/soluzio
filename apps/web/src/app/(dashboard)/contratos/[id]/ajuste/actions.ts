@@ -60,7 +60,12 @@ export async function aplicarAjusteAction(contratoId: string): Promise<void> {
       return total >= desdeTotal && total < hastaTotal
     })
 
-  if (tasas.length === 0) return
+  // No aplicar si faltan tasas: subestimaría el ajuste y crearía deuda cruzada.
+  if (tasas.length < contrato.periodo_ajuste_meses) return
+
+  // No aplicar antes de la fecha del ajuste.
+  const hoyStr = new Date().toISOString().slice(0, 10)
+  if (hoyStr < contrato.proxima_fecha_ajuste) return
 
   // 3. Calcular nuevo monto
   const resultado = calcularAjuste(contrato.monto_actual, tasas, contrato.periodo_ajuste_meses)
