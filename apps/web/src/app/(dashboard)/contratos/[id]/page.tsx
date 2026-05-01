@@ -11,6 +11,7 @@ import { ContratoActionsMenu } from '../contrato-actions-menu'
 import { DocumentoRow } from './documentos/documento-row'
 import { UploadDocumento } from './documentos/upload-documento'
 import { PanelAjuste } from './ajuste/panel-ajuste'
+import { HistoricoAjustes } from './ajuste/historico-ajustes'
 import type { Contrato } from '@alquileres/database'
 import type { TasaMensual, ResultadoAnalisisContrato } from '@alquileres/shared'
 
@@ -218,6 +219,9 @@ export default async function ContratoPage({ params }: Props) {
           tasas={tasasAjuste}
         />
       )}
+
+      {/* Histórico de ajustes ya aplicados */}
+      <HistoricoAjustes contratoId={id} />
 
       {/* Partes */}
       <div className="bg-white rounded-lg border border-zinc-200">
