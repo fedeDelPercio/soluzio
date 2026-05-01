@@ -40,9 +40,12 @@ export function ForgotPasswordForm() {
           <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" />
           <p className="text-sm">
             Si el email existe, te enviamos un link para resetear tu contraseña.
-            Revisá tu bandeja de entrada (y promociones / spam).
+            Revisá tu bandeja de entrada en los próximos minutos.
           </p>
         </div>
+        <p className="text-xs text-zinc-500 text-center">
+          ¿No lo encontrás? Probá en la carpeta de spam o promociones.
+        </p>
         <p className="text-center text-sm">
           <Link href="/login" className="text-zinc-600 hover:text-zinc-900 underline underline-offset-4">
             Volver al login

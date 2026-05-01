@@ -141,6 +141,41 @@ interface ResultadoAnalisis {
 const SELECT_CLASS = 'flex h-8 w-full rounded-lg border border-zinc-200 bg-white px-2.5 py-1 text-sm text-zinc-900 focus:outline-none focus:ring-1 focus:ring-zinc-900'
 const INPUT_CLASS  = 'h-8 text-sm bg-white'
 
+// Toggle "usar otro email para invitación al sistema" + input cuando está activo.
+function EmailInvitacionExtra({
+  namePrefix, defaultEmail,
+}: { namePrefix: string; defaultEmail?: string | null }) {
+  const [usarOtro, setUsarOtro] = useState(false)
+  return (
+    <div className="space-y-2 pt-1">
+      <label className="flex items-center gap-2 text-xs text-zinc-600 cursor-pointer">
+        <input
+          type="checkbox"
+          name={`${namePrefix}_usar_otro_email`}
+          checked={usarOtro}
+          onChange={(e) => setUsarOtro(e.target.checked)}
+          className="rounded border-zinc-300"
+        />
+        Usar otro email para invitarlo al sistema
+      </label>
+      {usarOtro && (
+        <div className="space-y-1 pl-6">
+          <Label className="text-xs">Email para invitación al sistema</Label>
+          <Input
+            name={`${namePrefix}_email_acceso`}
+            type="email"
+            placeholder={defaultEmail || 'email-distinto@ejemplo.com'}
+            className={INPUT_CLASS}
+          />
+          <p className="text-[11px] text-zinc-400">
+            Si lo dejás vacío, la invitación va al email del contrato.
+          </p>
+        </div>
+      )}
+    </div>
+  )
+}
+
 const PROVINCIAS = [
   'Buenos Aires', 'CABA', 'Catamarca', 'Chaco', 'Chubut', 'Córdoba',
   'Corrientes', 'Entre Ríos', 'Formosa', 'Jujuy', 'La Pampa', 'La Rioja',
@@ -666,7 +701,7 @@ export function ContratoWizard({ organizacionId, inmobiliarios: inmobiliariosIni
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="space-y-1">
-                  <Label className="text-xs">Email <span className="text-zinc-400">(para invitar acceso)</span></Label>
+                  <Label className="text-xs">Email del contrato</Label>
                   <Input name={`inquilino_${idx}_email`} type="email" defaultValue={inq?.email ?? ''} className={INPUT_CLASS} />
                 </div>
                 <div className="space-y-1">
@@ -678,6 +713,7 @@ export function ContratoWizard({ organizacionId, inmobiliarios: inmobiliariosIni
                   <Input name={`inquilino_${idx}_dni`} defaultValue={inq?.dni ?? ''} className={INPUT_CLASS} />
                 </div>
               </div>
+              <EmailInvitacionExtra namePrefix={`inquilino_${idx}`} defaultEmail={inq?.email} />
               {idx < (resultado.inquilinos?.length ?? 1) - 1 && <Separator />}
             </div>
           ))}
@@ -708,7 +744,7 @@ export function ContratoWizard({ organizacionId, inmobiliarios: inmobiliariosIni
                 <Input name="propietario_dni" defaultValue={resultado.propietario?.dni ?? ''} className={INPUT_CLASS} />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs">Email <span className="text-zinc-400">(opc.)</span></Label>
+                <Label className="text-xs">Email del contrato <span className="text-zinc-400">(opc.)</span></Label>
                 <Input name="propietario_email" type="email" defaultValue={resultado.propietario?.email ?? ''} className={INPUT_CLASS} />
               </div>
               <div className="space-y-1">
@@ -716,6 +752,7 @@ export function ContratoWizard({ organizacionId, inmobiliarios: inmobiliariosIni
                 <Input name="propietario_telefono" defaultValue={resultado.propietario?.telefono ?? ''} className={INPUT_CLASS} />
               </div>
             </div>
+            <EmailInvitacionExtra namePrefix="propietario" defaultEmail={resultado.propietario?.email} />
           </div>
 
           <Separator />

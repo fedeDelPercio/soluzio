@@ -1,5 +1,6 @@
 'use server'
 
+import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSession } from '@/lib/auth/session'
@@ -14,33 +15,70 @@ export async function crearContratoDesdeAnalisisAction(formData: FormData) {
   const db       = supabase as any
   const admin    = createAdminClient()
 
-  // Helper: buscar usuario existente por email o crearlo
-  async function findOrCreateUser(email: string, metadata: Record<string, unknown>): Promise<{ id: string | null; error: string | null }> {
+  // URL base para redirigir el link de invitación. Usamos x-forwarded-host
+  // (Vercel) y fallback al host del request.
+  const h = await headers()
+  const proto = h.get('x-forwarded-proto') ?? 'https'
+  const host  = h.get('x-forwarded-host') ?? h.get('host') ?? ''
+  const redirectInvite = host ? `${proto}://${host}/reset-password` : undefined
+
+  // Helper: buscar usuario existente por email o crearlo.
+  //   - Si el email es real (no placeholder) y sendInvite=true, manda email
+  //     de invitación con link para que setee la contraseña.
+  //   - Si el email es placeholder, crea el usuario silencioso con email_confirm.
+  async function findOrCreateUser(
+    email: string,
+    metadata: Record<string, unknown>,
+    options: { sendInvite?: boolean } = {},
+  ): Promise<{ id: string | null; error: string | null; invited: boolean }> {
     const { data: { users } } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 })
     const existing = users.find((u) => u.email?.toLowerCase() === email.toLowerCase())
-    if (existing) return { id: existing.id, error: null }
+    if (existing) return { id: existing.id, error: null, invited: false }
+
+    if (options.sendInvite) {
+      const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
+        data: metadata,
+        redirectTo: redirectInvite,
+      })
+      if (error) return { id: null, error: error.message, invited: false }
+      return { id: data.user.id, error: null, invited: true }
+    }
+
     const { data, error } = await admin.auth.admin.createUser({ email, email_confirm: true, user_metadata: metadata })
-    if (error) return { id: null, error: error.message }
-    return { id: data.user.id, error: null }
+    if (error) return { id: null, error: error.message, invited: false }
+    return { id: data.user.id, error: null, invited: false }
+  }
+
+  // Determina el email a usar para crear/invitar al usuario:
+  // - Si el admin tildó "usar otro email", usa el email_acceso (si está cargado).
+  // - Si no, usa el email del contrato.
+  // - Si no hay ninguno, devuelve null (placeholder).
+  function resolverEmailInvitacion(prefix: string): string | null {
+    const usarOtro    = formData.get(`${prefix}_usar_otro_email`) === 'on'
+    const emailAcceso = (formData.get(`${prefix}_email_acceso`) as string)?.trim()
+    const emailContrato = (formData.get(`${prefix}_email`) as string)?.trim()
+    if (usarOtro && emailAcceso) return emailAcceso
+    if (emailContrato) return emailContrato
+    return null
   }
 
   // 1. Crear propietario
   const propietarioNombre    = formData.get('propietario_nombre') as string
   const propietarioApellido  = formData.get('propietario_apellido') as string
-  const propietarioEmail     = formData.get('propietario_email') as string
   const propietarioDni       = formData.get('propietario_dni') as string
   const propietarioTelefono  = formData.get('propietario_telefono') as string
 
   let propietarioId: string
 
-  const emailPropietario = propietarioEmail || `propietario-${crypto.randomUUID()}@placeholder.local`
+  const emailPropResuelto = resolverEmailInvitacion('propietario')
+  const emailPropietario  = emailPropResuelto || `propietario-${crypto.randomUUID()}@placeholder.local`
   const { id: propId, error: propAuthError } = await findOrCreateUser(emailPropietario, {
     organizacion_id: perfil.organizacion_id,
     rol: 'propietario',
     nombre: propietarioNombre,
     apellido: propietarioApellido,
     telefono: propietarioTelefono || null,
-  })
+  }, { sendInvite: !!emailPropResuelto })
   if (propAuthError || !propId) return { error: `Error al crear propietario: ${propAuthError}` }
   propietarioId = propId
 
@@ -74,15 +112,15 @@ export async function crearContratoDesdeAnalisisAction(formData: FormData) {
   for (let i = 0; i < Math.min(inquilinosCount, 2); i++) {
     const nombre   = formData.get(`inquilino_${i}_nombre`) as string
     const apellido = formData.get(`inquilino_${i}_apellido`) as string
-    const email    = formData.get(`inquilino_${i}_email`) as string
     const telefono = (formData.get(`inquilino_${i}_telefono`) as string) || null
     const dni      = (formData.get(`inquilino_${i}_dni`) as string) || null
+    const emailResuelto = resolverEmailInvitacion(`inquilino_${i}`)
 
     let id: string
-    if (email) {
-      const { id: inqId, error: inqAuthError } = await findOrCreateUser(email, {
+    if (emailResuelto) {
+      const { id: inqId, error: inqAuthError } = await findOrCreateUser(emailResuelto, {
         organizacion_id: perfil.organizacion_id, rol: 'inquilino', nombre, apellido, telefono,
-      })
+      }, { sendInvite: true })
       if (inqAuthError || !inqId) return { error: `Error al crear inquilino ${i + 1}: ${inqAuthError}` }
       id = inqId
       // Guardar DNI en el perfil si fue provisto
