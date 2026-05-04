@@ -10,7 +10,8 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
-import { rescindirContratoAction, eliminarContratoAction } from './contrato-actions'
+import { rescindirContratoAction } from './contrato-actions'
+import { EliminarContratoDialog } from './eliminar-contrato-dialog'
 
 interface Props {
   contratoId: string
@@ -19,7 +20,8 @@ interface Props {
 
 export function ContratoActionsMenu({ contratoId, estado }: Props) {
   const router = useRouter()
-  const [mounted, setMounted] = useState(false)
+  const [mounted, setMounted]   = useState(false)
+  const [openDelete, setOpenDel] = useState(false)
   useEffect(() => setMounted(true), [])
   if (!mounted) return <div className="w-7 h-7" />
 
@@ -28,39 +30,42 @@ export function ContratoActionsMenu({ contratoId, estado }: Props) {
     await rescindirContratoAction(contratoId)
   }
 
-  async function handleEliminar() {
-    if (!confirm('¿Eliminar este contrato permanentemente? Esta acción no se puede deshacer.')) return
-    await eliminarContratoAction(contratoId)
-  }
-
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        onClick={(e) => e.stopPropagation()}
-        className="flex items-center justify-center w-7 h-7 rounded-md text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors outline-none"
-      >
-        <MoreHorizontal className="w-4 h-4" />
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" side="bottom">
-        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push(`/contratos/${contratoId}/editar`) }}>
-          <FileEdit className="w-4 h-4" />
-          Editar
-        </DropdownMenuItem>
-
-        {estado !== 'rescindido' && (
-          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleRescindir() }}>
-            <Ban className="w-4 h-4" />
-            Rescindir
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          onClick={(e) => e.stopPropagation()}
+          className="flex items-center justify-center w-7 h-7 rounded-md text-zinc-400 hover:text-zinc-700 hover:bg-zinc-100 transition-colors outline-none"
+        >
+          <MoreHorizontal className="w-4 h-4" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" side="bottom">
+          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push(`/contratos/${contratoId}/editar`) }}>
+            <FileEdit className="w-4 h-4" />
+            Editar
           </DropdownMenuItem>
-        )}
 
-        <DropdownMenuSeparator />
+          {estado !== 'rescindido' && (
+            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleRescindir() }}>
+              <Ban className="w-4 h-4" />
+              Rescindir
+            </DropdownMenuItem>
+          )}
 
-        <DropdownMenuItem variant="destructive" onClick={(e) => { e.stopPropagation(); handleEliminar() }}>
-          <Trash2 className="w-4 h-4" />
-          Eliminar
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+          <DropdownMenuSeparator />
+
+          <DropdownMenuItem variant="destructive" onClick={(e) => { e.stopPropagation(); setOpenDel(true) }}>
+            <Trash2 className="w-4 h-4" />
+            Eliminar
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <EliminarContratoDialog
+        contratoId={contratoId}
+        open={openDelete}
+        onClose={() => setOpenDel(false)}
+      />
+    </>
   )
 }
