@@ -1,4 +1,5 @@
 import { notFound, redirect } from 'next/navigation'
+import { Suspense } from 'react'
 import Link from 'next/link'
 import { getSession } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
@@ -221,7 +222,9 @@ export default async function ContratoPage({ params }: Props) {
       )}
 
       {/* Histórico de ajustes ya aplicados */}
-      <HistoricoAjustes contratoId={id} />
+      <Suspense fallback={<SectionSkeleton rows={2} />}>
+        <HistoricoAjustes contratoId={id} />
+      </Suspense>
 
       {/* Partes */}
       <div className="bg-white rounded-lg border border-zinc-200">
@@ -333,12 +336,14 @@ export default async function ContratoPage({ params }: Props) {
       })()}
 
       {/* Documentos */}
-      <DocumentosSection
-        contratoId={id}
-        organizacionId={contrato.organizacion_id as string}
-        esAdmin={esAdmin}
-        puedeSubir={esAdmin || perfil.rol === 'inquilino'}
-      />
+      <Suspense fallback={<SectionSkeleton rows={3} label="Documentos" />}>
+        <DocumentosSection
+          contratoId={id}
+          organizacionId={contrato.organizacion_id as string}
+          esAdmin={esAdmin}
+          puedeSubir={esAdmin || perfil.rol === 'inquilino'}
+        />
+      </Suspense>
 
       {/* Acciones */}
       {esAdmin && contrato.ia_analisis_resultado && contrato.estado === 'borrador' && (
@@ -350,7 +355,9 @@ export default async function ContratoPage({ params }: Props) {
 
       {/* Pagos */}
       {contrato.estado !== 'borrador' && (
-        <PagosSection contratoId={id} organizacionId={contrato.organizacion_id as string} esAdmin={esAdmin} esInquilino={perfil.rol === 'inquilino'} />
+        <Suspense fallback={<SectionSkeleton rows={3} label="Pagos" />}>
+          <PagosSection contratoId={id} organizacionId={contrato.organizacion_id as string} esAdmin={esAdmin} esInquilino={perfil.rol === 'inquilino'} />
+        </Suspense>
       )}
 
       {/* Servicios */}
@@ -380,6 +387,24 @@ export default async function ContratoPage({ params }: Props) {
           <span className="text-xs text-zinc-500">Ver →</span>
         </Link>
       )}
+    </div>
+  )
+}
+
+function SectionSkeleton({ rows = 3, label }: { rows?: number; label?: string }) {
+  return (
+    <div className="bg-white rounded-lg border border-zinc-200 animate-pulse">
+      <div className="px-4 py-3 border-b border-zinc-100 flex items-center gap-2">
+        <div className="h-4 w-4 bg-zinc-200 rounded" />
+        <div className="h-4 w-28 bg-zinc-200 rounded" />
+        {label && <span className="sr-only">{label}</span>}
+      </div>
+      {Array.from({ length: rows }).map((_, i) => (
+        <div key={i} className="px-4 py-3 flex items-center justify-between border-b border-zinc-100 last:border-0">
+          <div className="h-4 w-48 bg-zinc-100 rounded" />
+          <div className="h-4 w-20 bg-zinc-100 rounded" />
+        </div>
+      ))}
     </div>
   )
 }

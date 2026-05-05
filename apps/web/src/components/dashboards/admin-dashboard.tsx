@@ -15,11 +15,19 @@ export async function AdminDashboard({ perfil }: AdminDashboardProps) {
 
   const hoyStr = new Date().toISOString().slice(0, 10)
 
+  const en30DiasStr = (() => {
+    const d = new Date()
+    d.setDate(d.getDate() + 30)
+    return d.toISOString().slice(0, 10)
+  })()
+
   const [
     { count: contratosActivos },
     { count: pagosPendientes },
     { count: ticketsAbiertos },
     { count: propiedades },
+    { count: pagosAtrasados },
+    { data: ajustesProximosRaw },
   ] = await Promise.all([
     db.from('contratos').select('*', { count: 'exact', head: true }).eq('estado', 'activo'),
     db.from('pagos')
@@ -31,6 +39,25 @@ export async function AdminDashboard({ perfil }: AdminDashboardProps) {
       .select('*', { count: 'exact', head: true })
       .in('estado', ['abierto', 'clasificado', 'asignado', 'en_proceso']),
     db.from('propiedades').select('*', { count: 'exact', head: true }),
+    // Pagos atrasados (vencimiento pasado y estado pendiente)
+    db.from('pagos')
+      .select('*', { count: 'exact', head: true })
+      .eq('estado', 'pendiente')
+      .lt('fecha_vencimiento', hoyStr)
+      .or('concepto.eq.alquiler,monto_esperado.gt.0'),
+    // Contratos con ajuste próximo (próximos 30 días o ya vencido)
+    db.from('contratos')
+      .select(`
+        id, monto_actual, proxima_fecha_ajuste, indice_ajuste,
+        propiedades ( calle, numero ),
+        inquilino:perfiles!contratos_inquilino_id_fkey ( nombre, apellido )
+      `)
+      .eq('estado', 'activo')
+      .neq('indice_ajuste', 'fijo')
+      .not('proxima_fecha_ajuste', 'is', null)
+      .lte('proxima_fecha_ajuste', en30DiasStr)
+      .order('proxima_fecha_ajuste', { ascending: true })
+      .limit(10),
   ])
 
   const statCards = [
@@ -39,36 +66,6 @@ export async function AdminDashboard({ perfil }: AdminDashboardProps) {
     { label: 'Tickets abiertos', value: ticketsAbiertos ?? '—', icon: Wrench, description: 'Solicitudes activas', href: '/solicitudes' },
     { label: 'Propiedades', value: propiedades ?? '—', icon: Building2, description: 'Unidades registradas', href: '/propiedades' },
   ]
-
-  const en30DiasStr = (() => {
-    const d = new Date()
-    d.setDate(d.getDate() + 30)
-    return d.toISOString().slice(0, 10)
-  })()
-
-  // Pagos atrasados (vencimiento pasado y estado pendiente)
-  // Excluye placeholders de servicios en $0 (solo alquiler o servicios con monto cargado).
-  const { count: pagosAtrasados } = await db
-    .from('pagos')
-    .select('*', { count: 'exact', head: true })
-    .eq('estado', 'pendiente')
-    .lt('fecha_vencimiento', hoyStr)
-    .or('concepto.eq.alquiler,monto_esperado.gt.0')
-
-  // Contratos con ajuste próximo (próximos 30 días o ya vencido)
-  const { data: ajustesProximosRaw } = await db
-    .from('contratos')
-    .select(`
-      id, monto_actual, proxima_fecha_ajuste, indice_ajuste,
-      propiedades ( calle, numero ),
-      inquilino:perfiles!contratos_inquilino_id_fkey ( nombre, apellido )
-    `)
-    .eq('estado', 'activo')
-    .neq('indice_ajuste', 'fijo')
-    .not('proxima_fecha_ajuste', 'is', null)
-    .lte('proxima_fecha_ajuste', en30DiasStr)
-    .order('proxima_fecha_ajuste', { ascending: true })
-    .limit(10)
 
   const ajustesProximos = (ajustesProximosRaw ?? []) as {
     id: string
