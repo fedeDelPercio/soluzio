@@ -58,10 +58,12 @@ export async function PropietarioDashboard({ perfil }: PropietarioDashboardProps
       .order('calle', { ascending: true }),
     db.from('pagos').select('*', { count: 'exact', head: true })
       .eq('estado', 'verificado')
+      .eq('concepto', 'alquiler')
       .gte('fecha_vencimiento', inicioMesStr)
       .lte('fecha_vencimiento', finMes),
     db.from('pagos').select('*', { count: 'exact', head: true })
       .eq('estado', 'comprobante_subido')
+      .eq('concepto', 'alquiler')
       .gte('fecha_vencimiento', inicioMesStr)
       .lte('fecha_vencimiento', finMes),
     db.from('pagos')
@@ -70,6 +72,7 @@ export async function PropietarioDashboard({ perfil }: PropietarioDashboardProps
         contratos ( propiedades ( calle, numero ), inquilino:perfiles!contratos_inquilino_id_fkey ( nombre, apellido ) )
       `)
       .eq('estado', 'pendiente')
+      .eq('concepto', 'alquiler')
       .lt('fecha_vencimiento', hoyStr)
       .order('fecha_vencimiento', { ascending: true })
       .limit(5),
@@ -79,6 +82,7 @@ export async function PropietarioDashboard({ perfil }: PropietarioDashboardProps
         contratos ( propiedades ( calle, numero ), inquilino:perfiles!contratos_inquilino_id_fkey ( nombre, apellido ) )
       `)
       .eq('estado', 'verificado')
+      .eq('concepto', 'alquiler')
       .order('fecha_vencimiento', { ascending: false })
       .limit(5),
     db.from('solicitudes').select('*', { count: 'exact', head: true })

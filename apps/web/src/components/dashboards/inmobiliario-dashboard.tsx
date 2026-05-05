@@ -19,33 +19,52 @@ export async function InmobiliarioDashboard({ perfil }: InmobiliarioDashboardPro
   const finMes = new Date(inicioMes.getFullYear(), inicioMes.getMonth() + 1, 0)
     .toISOString().split('T')[0]
 
-  // Las RLS ya filtran por inmobiliario_id automáticamente
+  // Paso 1: propiedades y contratos del inmobiliario en paralelo
+  // (RLS en `pagos` no alcanza a filtrar por inmobiliario_id a través del join)
+  const [{ data: propiedadesData }, { data: contratosData }] = await Promise.all([
+    db.from('propiedades').select('id').eq('inmobiliario_id', perfil.id),
+    db.from('contratos').select('id, propiedad_id').eq('estado', 'activo'),
+  ])
+
+  const propiedadIds = new Set<string>((propiedadesData ?? []).map((p: any) => p.id))
+  const totalPropiedades = propiedadIds.size
+
+  const contratoIds: string[] = ((contratosData ?? []) as any[])
+    .filter((c: any) => propiedadIds.has(c.propiedad_id))
+    .map((c: any) => c.id)
+  const totalContratos = contratoIds.length
+
+  // Paso 2: queries de pagos filtradas por los contratos del inmobiliario
   const [
-    { count: totalPropiedades },
-    { count: totalContratos },
     { count: cobrosVerificados },
     { count: pagosAtrasados },
     { data: proxVencimientosRaw },
-  ] = await Promise.all([
-    db.from('propiedades').select('*', { count: 'exact', head: true }),
-    db.from('contratos').select('*', { count: 'exact', head: true }).eq('estado', 'activo'),
-    db.from('pagos').select('*', { count: 'exact', head: true })
-      .eq('estado', 'verificado')
-      .gte('fecha_vencimiento', inicioMesStr)
-      .lte('fecha_vencimiento', finMes),
-    db.from('pagos').select('*', { count: 'exact', head: true })
-      .eq('estado', 'pendiente')
-      .lt('fecha_vencimiento', hoyStr),
-    db.from('pagos')
-      .select(`
-        id, contrato_id, monto_esperado, fecha_vencimiento, estado,
-        contratos ( propiedades ( calle, numero ), inquilino:perfiles!contratos_inquilino_id_fkey ( nombre, apellido ) )
-      `)
-      .eq('estado', 'pendiente')
-      .gte('fecha_vencimiento', hoyStr)
-      .order('fecha_vencimiento', { ascending: true })
-      .limit(5),
-  ])
+  ] = contratoIds.length > 0
+    ? await Promise.all([
+        db.from('pagos').select('*', { count: 'exact', head: true })
+          .in('contrato_id', contratoIds)
+          .eq('estado', 'verificado')
+          .eq('concepto', 'alquiler')
+          .gte('fecha_vencimiento', inicioMesStr)
+          .lte('fecha_vencimiento', finMes),
+        db.from('pagos').select('*', { count: 'exact', head: true })
+          .in('contrato_id', contratoIds)
+          .eq('estado', 'pendiente')
+          .eq('concepto', 'alquiler')
+          .lt('fecha_vencimiento', hoyStr),
+        db.from('pagos')
+          .select(`
+            id, contrato_id, monto_esperado, fecha_vencimiento, estado,
+            contratos ( propiedades ( calle, numero ), inquilino:perfiles!contratos_inquilino_id_fkey ( nombre, apellido ) )
+          `)
+          .in('contrato_id', contratoIds)
+          .eq('estado', 'pendiente')
+          .eq('concepto', 'alquiler')
+          .gte('fecha_vencimiento', hoyStr)
+          .order('fecha_vencimiento', { ascending: true })
+          .limit(5),
+      ])
+    : [{ count: 0 }, { count: 0 }, { data: [] }]
 
   const proxVencimientos = (proxVencimientosRaw ?? []) as any[]
 
