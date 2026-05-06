@@ -56,16 +56,17 @@ export async function PropietarioDashboard({ perfil }: PropietarioDashboardProps
         )
       `)
       .order('calle', { ascending: true }),
+    // Cobros del mes: el inquilino pagó (con o sin verificación del admin)
     db.from('pagos').select('*', { count: 'exact', head: true })
-      .eq('estado', 'verificado')
+      .in('estado', ['verificado', 'comprobante_subido'])
       .eq('concepto', 'alquiler')
       .gte('fecha_vencimiento', inicioMesStr)
       .lte('fecha_vencimiento', finMes),
+    // Sin pagar: ningún comprobante cargado, sin límite de mes
     db.from('pagos').select('*', { count: 'exact', head: true })
-      .eq('estado', 'comprobante_subido')
+      .in('estado', ['pendiente', 'atrasado'])
       .eq('concepto', 'alquiler')
-      .gte('fecha_vencimiento', inicioMesStr)
-      .lte('fecha_vencimiento', finMes),
+      .lt('fecha_vencimiento', hoyStr),
     db.from('pagos')
       .select(`
         id, contrato_id, monto_esperado, fecha_vencimiento,
@@ -122,18 +123,20 @@ export async function PropietarioDashboard({ perfil }: PropietarioDashboardProps
             <p className="text-sm text-zinc-500">Cobros del mes</p>
             <CheckCircle2 className="w-4 h-4 text-zinc-400" />
           </div>
-          <p className="text-2xl font-semibold text-green-600">{cobrosDelMes ?? 0}</p>
-          <p className="text-xs text-zinc-400">Verificados</p>
+          <p className={`text-2xl font-semibold ${(cobrosDelMes ?? 0) > 0 ? 'text-green-600' : 'text-zinc-900'}`}>
+            {cobrosDelMes ?? 0}
+          </p>
+          <p className="text-xs text-zinc-400">Pagos recibidos este mes</p>
         </div>
         <div className="bg-white rounded-lg border border-zinc-200 p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-zinc-500">Por cobrar</p>
+            <p className="text-sm text-zinc-500">Sin pagar</p>
             <Clock className="w-4 h-4 text-zinc-400" />
           </div>
           <p className={`text-2xl font-semibold ${(pagosPorCobrar ?? 0) > 0 ? 'text-amber-600' : 'text-zinc-900'}`}>
             {pagosPorCobrar ?? 0}
           </p>
-          <p className="text-xs text-zinc-400">Comprobante por verificar</p>
+          <p className="text-xs text-zinc-400">Meses vencidos sin comprobante</p>
         </div>
         <Link href="/solicitudes" className="bg-white rounded-lg border border-zinc-200 p-4 space-y-3 hover:border-zinc-300 transition-colors">
           <div className="flex items-center justify-between">
