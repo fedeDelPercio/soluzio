@@ -225,7 +225,11 @@ export default async function SolicitudDetallePage({
       {/* Placeholder para no-admin sin novedades aún */}
       {!esAdmin && !solicitud.respuesta_admin && !['resuelto', 'cerrado'].includes(solicitud.estado) && (
         <div className="bg-zinc-50 border border-zinc-200 rounded-lg px-4 py-5 text-center space-y-1">
-          <p className="text-sm text-zinc-500">Tu solicitud fue recibida y está siendo revisada.</p>
+          <p className="text-sm text-zinc-500">
+            {perfil?.rol === 'inquilino'
+              ? 'Tu solicitud fue recibida y está siendo revisada.'
+              : 'La solicitud fue recibida y está siendo revisada.'}
+          </p>
           <p className="text-xs text-zinc-400">Cuando el administrador la gestione vas a ver las novedades acá.</p>
         </div>
       )}
