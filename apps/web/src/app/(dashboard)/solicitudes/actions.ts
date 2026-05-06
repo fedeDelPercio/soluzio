@@ -1,57 +1,57 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSession } from '@/lib/auth/session'
 import { createSolicitudSchema, updateSolicitudSchema } from '@alquileres/shared/validators'
 
-export async function crearSolicitudAction(formData: FormData): Promise<void> {
+export async function crearSolicitudAction(
+  formData: FormData,
+): Promise<{ id: string; organizacion_id: string } | { error: string }> {
   const { user, perfil } = await getSession()
-  if (!user || !perfil) redirect('/login')
-  if (!['administrador', 'inquilino'].includes(perfil.rol)) return
+  if (!user || !perfil) return { error: 'No autenticado' }
+  if (!['administrador', 'inquilino'].includes(perfil.rol)) return { error: 'No autorizado' }
 
   const raw = {
-    contrato_id: formData.get('contrato_id'),
-    tipo: formData.get('tipo'),
-    titulo: formData.get('titulo'),
-    descripcion: formData.get('descripcion'),
-    prioridad: formData.get('prioridad') || 'media',
+    contrato_id:  formData.get('contrato_id'),
+    tipo:         formData.get('tipo'),
+    titulo:       formData.get('titulo'),
+    descripcion:  formData.get('descripcion'),
+    prioridad:    formData.get('prioridad') || 'media',
   }
 
   const parsed = createSolicitudSchema.safeParse(raw)
-  if (!parsed.success) return
+  if (!parsed.success) return { error: 'Datos inválidos' }
 
   const admin = createAdminClient()
   const db = admin as any
 
-  // Obtener organizacion_id del contrato
   const { data: contrato } = await db
     .from('contratos')
     .select('organizacion_id')
     .eq('id', parsed.data.contrato_id)
     .single()
 
-  if (!contrato) return
+  if (!contrato) return { error: 'Contrato no encontrado' }
 
   const { data: solicitud, error } = await db
     .from('solicitudes')
     .insert({
       organizacion_id: contrato.organizacion_id,
-      contrato_id: parsed.data.contrato_id,
-      reportado_por: user.id,
-      tipo: parsed.data.tipo,
-      titulo: parsed.data.titulo,
-      descripcion: parsed.data.descripcion,
-      prioridad: parsed.data.prioridad,
+      contrato_id:     parsed.data.contrato_id,
+      reportado_por:   user.id,
+      tipo:            parsed.data.tipo,
+      titulo:          parsed.data.titulo,
+      descripcion:     parsed.data.descripcion,
+      prioridad:       parsed.data.prioridad,
     })
-    .select('id, tipo')
+    .select('id, organizacion_id')
     .single()
 
-  if (error || !solicitud) return
+  if (error || !solicitud) return { error: 'Error al crear la solicitud' }
 
   revalidatePath('/solicitudes')
-  redirect(`/solicitudes/${solicitud.id}`)
+  return { id: solicitud.id, organizacion_id: solicitud.organizacion_id }
 }
 
 export async function actualizarSolicitudAction(
@@ -64,13 +64,12 @@ export async function actualizarSolicitudAction(
   }
 
   const raw = {
-    estado: formData.get('estado') || undefined,
-    prioridad: formData.get('prioridad') || undefined,
-    responsable_confirmado: formData.get('responsable_confirmado') || undefined,
-    respuesta_admin: formData.get('respuesta_admin') || undefined,
+    estado:                  formData.get('estado') || undefined,
+    prioridad:               formData.get('prioridad') || undefined,
+    responsable_confirmado:  formData.get('responsable_confirmado') || undefined,
+    respuesta_admin:         formData.get('respuesta_admin') || undefined,
   }
 
-  // Eliminar claves undefined
   const cleaned = Object.fromEntries(
     Object.entries(raw).filter(([, v]) => v !== undefined && v !== ''),
   )
@@ -86,7 +85,7 @@ export async function actualizarSolicitudAction(
   if (parsed.data.respuesta_admin) {
     const { user } = await getSession()
     updateData.respondido_por = user?.id
-    updateData.respondido_en = new Date().toISOString()
+    updateData.respondido_en  = new Date().toISOString()
   }
 
   const { error } = await db
@@ -116,21 +115,39 @@ export async function getSignedPhotoUrlAction(ruta: string): Promise<string | nu
 export async function insertarFotosSolicitudAction(
   solicitudId: string,
   organizacionId: string,
-  rutas: string[],
+  fotos: { ruta: string; descripcion?: string }[],
 ): Promise<void> {
   const { perfil } = await getSession()
   if (!perfil || !['administrador', 'inquilino'].includes(perfil.rol)) return
-
-  if (rutas.length === 0) return
+  if (fotos.length === 0) return
 
   const admin = createAdminClient()
   const db = admin as any
 
-  const rows = rutas.map((ruta) => ({
+  const rows = fotos.map(({ ruta, descripcion }) => ({
     organizacion_id: organizacionId,
-    solicitud_id: solicitudId,
-    ruta_archivo: ruta,
+    solicitud_id:    solicitudId,
+    ruta_archivo:    ruta,
+    descripcion:     descripcion || null,
   }))
 
   await db.from('fotos_solicitud').insert(rows)
+}
+
+export async function actualizarDescripcionFotoAction(
+  fotoId: string,
+  descripcion: string,
+): Promise<{ ok: boolean }> {
+  const { perfil } = await getSession()
+  if (!perfil || !['administrador', 'inquilino'].includes(perfil.rol)) {
+    return { ok: false }
+  }
+
+  const admin = createAdminClient()
+  const { error } = await (admin as any)
+    .from('fotos_solicitud')
+    .update({ descripcion: descripcion.trim() || null })
+    .eq('id', fotoId)
+
+  return { ok: !error }
 }

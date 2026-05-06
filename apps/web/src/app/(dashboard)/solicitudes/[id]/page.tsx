@@ -1,11 +1,12 @@
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Bot, Image as ImageIcon } from 'lucide-react'
+import { ArrowLeft, Bot } from 'lucide-react'
 import { requireSession } from '@/lib/auth/session'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { formatFecha } from '@/lib/utils'
 import { AdminActions } from './admin-actions'
+import { FotosSection } from './fotos-section'
 
 const TIPO_LABEL: Record<string, string> = {
   mantenimiento: 'Mantenimiento',
@@ -94,13 +95,14 @@ export default async function SolicitudDetallePage({
   if (!solicitud) notFound()
 
   // Fotos (solo si mantenimiento)
-  let fotosConUrl: { ruta: string; url: string }[] = []
+  let fotosData: { id: string; ruta: string; url: string; descripcion: string | null }[] = []
   if (solicitud.tipo === 'mantenimiento') {
     const { data: fotos } = await db
       .from('fotos_solicitud')
-      .select('ruta_archivo')
+      .select('id, ruta_archivo, descripcion')
       .eq('solicitud_id', id)
-      .limit(5)
+      .order('creado_en', { ascending: true })
+      .limit(10)
 
     const rutas = (fotos ?? []).map((f: any) => f.ruta_archivo)
     if (rutas.length > 0) {
@@ -108,9 +110,17 @@ export default async function SolicitudDetallePage({
       const { data: signedUrls } = await adminClient.storage
         .from('mantenimiento')
         .createSignedUrls(rutas, 3600)
-      fotosConUrl = (signedUrls ?? [])
-        .filter((s: any) => s.signedUrl)
-        .map((s: any) => ({ ruta: s.path, url: s.signedUrl }))
+      const urlMap = Object.fromEntries(
+        (signedUrls ?? []).filter((s: any) => s.signedUrl).map((s: any) => [s.path, s.signedUrl])
+      )
+      fotosData = (fotos ?? [])
+        .filter((f: any) => urlMap[f.ruta_archivo])
+        .map((f: any) => ({
+          id:          f.id,
+          ruta:        f.ruta_archivo,
+          url:         urlMap[f.ruta_archivo],
+          descripcion: f.descripcion ?? null,
+        }))
     }
   }
 
@@ -166,24 +176,10 @@ export default async function SolicitudDetallePage({
       </div>
 
       {/* Fotos */}
-      {fotosConUrl.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-sm font-medium text-zinc-700 flex items-center gap-1.5">
-            <ImageIcon className="w-4 h-4" /> Fotos adjuntas
-          </p>
-          <div className="flex flex-wrap gap-3">
-            {fotosConUrl.map((f) => (
-              <a key={f.ruta} href={f.url} target="_blank" rel="noopener noreferrer">
-                <img
-                  src={f.url}
-                  alt="Foto solicitud"
-                  className="w-24 h-24 object-cover rounded-lg border border-zinc-200 hover:opacity-90 transition-opacity"
-                />
-              </a>
-            ))}
-          </div>
-        </div>
-      )}
+      <FotosSection
+        fotos={fotosData}
+        canEdit={['administrador', 'inquilino'].includes(perfil?.rol ?? '')}
+      />
 
       {/* Panel IA (solo mantenimiento) */}
       {solicitud.tipo === 'mantenimiento' && solicitud.ia_sugerencia_responsable && (
