@@ -207,7 +207,11 @@ function SolicitudesList({
         <MessageSquare className="w-10 h-10 text-zinc-300 mx-auto mb-3" />
         <p className="text-sm font-medium text-zinc-600">No hay solicitudes para mostrar</p>
         <p className="text-xs text-zinc-400 mt-1">
-          {esAdmin ? 'La bandeja está vacía' : 'Usá el botón Nueva para crear una solicitud'}
+          {esAdmin
+            ? 'La bandeja está vacía'
+            : esInquilino
+            ? 'Usá el botón Nueva para crear una solicitud'
+            : 'No hay solicitudes activas en tus propiedades'}
         </p>
       </div>
     )
