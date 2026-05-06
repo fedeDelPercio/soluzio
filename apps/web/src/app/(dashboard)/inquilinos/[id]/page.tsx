@@ -78,7 +78,7 @@ export default async function InquilinoPage({ params }: { params: Promise<{ id: 
         .select('id, estado, monto_esperado, fecha_vencimiento, contrato_id, periodos_pago ( anio, mes )')
         .in('contrato_id', contratoIds)
         .lte('fecha_vencimiento', finDeMes)
-        .or('concepto.eq.alquiler,monto_esperado.gt.0')
+        .eq('concepto', 'alquiler')
         .order('fecha_vencimiento', { ascending: false })
         .limit(12)
     : { data: [] }

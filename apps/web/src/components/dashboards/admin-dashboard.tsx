@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { Perfil } from '@alquileres/database'
-import { FileText, CreditCard, Wrench, AlertCircle, Clock, TrendingUp, Eye } from 'lucide-react'
+import { FileText, CreditCard, Wrench, AlertCircle, Clock, TrendingUp, Eye, Zap } from 'lucide-react'
 import { formatARS, formatFecha } from '@/lib/utils'
 
 interface AdminDashboardProps {
@@ -30,16 +30,17 @@ export async function AdminDashboard({ perfil }: AdminDashboardProps) {
     { data: ajustesProximosRaw },
   ] = await Promise.all([
     db.from('contratos').select('*', { count: 'exact', head: true }).eq('estado', 'activo'),
-    // Comprobantes subidos que el admin debe revisar
+    // Comprobantes de alquiler subidos que el admin debe revisar (los servicios se gestionan aparte)
     db.from('pagos')
       .select('*', { count: 'exact', head: true })
-      .eq('estado', 'comprobante_subido'),
-    // Pagos vencidos sin comprobante (el inquilino no pagó)
+      .eq('estado', 'comprobante_subido')
+      .eq('concepto', 'alquiler'),
+    // Alquileres vencidos sin comprobante (el inquilino no pagó)
     db.from('pagos')
       .select('*', { count: 'exact', head: true })
       .in('estado', ['pendiente', 'atrasado'])
       .lte('fecha_vencimiento', hoyStr)
-      .or('concepto.eq.alquiler,monto_esperado.gt.0'),
+      .eq('concepto', 'alquiler'),
     db.from('solicitudes')
       .select('*', { count: 'exact', head: true })
       .in('estado', ['abierto', 'clasificado', 'asignado', 'en_proceso']),
@@ -48,7 +49,7 @@ export async function AdminDashboard({ perfil }: AdminDashboardProps) {
       .select('*', { count: 'exact', head: true })
       .in('estado', ['pendiente', 'atrasado'])
       .lt('fecha_vencimiento', hoyStr)
-      .or('concepto.eq.alquiler,monto_esperado.gt.0'),
+      .eq('concepto', 'alquiler'),
     // Contratos con ajuste próximo (próximos 30 días o ya vencido)
     db.from('contratos')
       .select(`
@@ -169,6 +170,9 @@ export async function AdminDashboard({ perfil }: AdminDashboardProps) {
 
       {/* Actividad reciente: últimos pagos con comprobante */}
       <RecentesPagos />
+
+      {/* Servicios cargados por inquilinos pendientes de revisión */}
+      <ServiciosPorVerificar />
     </div>
   )
 }
@@ -188,11 +192,13 @@ async function RecentesPagos() {
         comprobantes_pago ( id, ruta_archivo )
       `)
       .eq('estado', 'comprobante_subido')
+      .eq('concepto', 'alquiler')
       .order('actualizado_en', { ascending: false })
       .limit(5),
     db.from('pagos')
       .select('*', { count: 'exact', head: true })
-      .eq('estado', 'comprobante_subido'),
+      .eq('estado', 'comprobante_subido')
+      .eq('concepto', 'alquiler'),
   ])
 
   const pagos = (pagosRaw ?? []) as any[]
@@ -241,6 +247,110 @@ async function RecentesPagos() {
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <p className="text-sm font-semibold text-zinc-900">
                     ${(p.monto_esperado ?? 0).toLocaleString('es-AR')}
+                  </p>
+                  {url && (
+                    <a
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-xs font-medium text-zinc-600 hover:text-zinc-900 border border-zinc-200 hover:border-zinc-300 px-2 py-1 rounded-md transition-colors"
+                    >
+                      <Eye className="w-3 h-3" /> Ver
+                    </a>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+const SERVICIO_LABEL: Record<string, string> = {
+  electricidad: 'Electricidad',
+  gas: 'Gas',
+  agua: 'Agua',
+  expensas_ordinarias: 'Expensas',
+  expensas_extraordinarias: 'Expensas extra',
+  municipal: 'ABL / Municipal',
+  otro: 'Otro',
+}
+
+async function ServiciosPorVerificar() {
+  const supabase = await createClient()
+  const db = supabase as any
+
+  const [{ data: pagosRaw }, { count: totalServicios }] = await Promise.all([
+    db.from('pagos')
+      .select(`
+        id, concepto, monto_esperado, fecha_vencimiento, contrato_id,
+        contratos (
+          propiedades ( calle, numero ),
+          inquilino:perfiles!contratos_inquilino_id_fkey ( nombre, apellido )
+        ),
+        comprobantes_pago ( id, ruta_archivo, tipo_comprobante )
+      `)
+      .eq('estado', 'comprobante_subido')
+      .neq('concepto', 'alquiler')
+      .order('actualizado_en', { ascending: false })
+      .limit(5),
+    db.from('pagos')
+      .select('*', { count: 'exact', head: true })
+      .eq('estado', 'comprobante_subido')
+      .neq('concepto', 'alquiler'),
+  ])
+
+  const pagos = (pagosRaw ?? []) as any[]
+
+  const admin = createAdminClient()
+  const rutas = pagos.flatMap((p) => (p.comprobantes_pago ?? []).map((c: any) => c.ruta_archivo)).filter(Boolean)
+  const signedMap: Record<string, string> = {}
+  if (rutas.length > 0) {
+    const { data: signed } = await (admin.storage.from('comprobantes') as any).createSignedUrls(rutas, 3600)
+    ;(signed ?? []).forEach((s: { path: string; signedUrl: string }) => {
+      if (s.signedUrl) signedMap[s.path] = s.signedUrl
+    })
+  }
+
+  return (
+    <div className="bg-white rounded-lg border border-zinc-200">
+      <div className="px-4 py-3 border-b border-zinc-100 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Zap className="w-4 h-4 text-zinc-400" />
+          <h2 className="text-sm font-medium text-zinc-700">Servicios por verificar</h2>
+          {(totalServicios ?? 0) > 0 && (
+            <span className="text-xs font-semibold bg-amber-100 text-amber-700 rounded-full px-2 py-0.5">
+              {totalServicios}
+            </span>
+          )}
+        </div>
+      </div>
+      {pagos.length === 0 ? (
+        <div className="px-4 py-8 text-center">
+          <p className="text-sm text-zinc-400">No hay servicios pendientes de verificación</p>
+        </div>
+      ) : (
+        <div className="divide-y divide-zinc-100">
+          {pagos.map((p: any) => {
+            const prop    = p.contratos?.propiedades
+            const inq     = p.contratos?.inquilino
+            const compPago = (p.comprobantes_pago ?? []).find((c: any) => c.tipo_comprobante === 'pago')
+            const url     = compPago ? signedMap[compPago.ruta_archivo] : null
+            return (
+              <div key={p.id} className="px-4 py-3 flex items-center justify-between gap-3">
+                <Link href={`/contratos/${p.contrato_id}/servicios`} className="min-w-0 flex-1 hover:text-zinc-700 transition-colors">
+                  <p className="text-sm font-medium text-zinc-900 truncate">
+                    {SERVICIO_LABEL[p.concepto] ?? p.concepto} · {prop?.calle} {prop?.numero}
+                  </p>
+                  <p className="text-xs text-zinc-400 truncate">
+                    {inq?.nombre} {inq?.apellido}
+                  </p>
+                </Link>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <p className="text-sm font-semibold text-zinc-900">
+                    {p.monto_esperado > 0 ? formatARS(p.monto_esperado) : '—'}
                   </p>
                   {url && (
                     <a

@@ -155,9 +155,9 @@ export default async function PagosPage({ searchParams }: { searchParams: Search
       query = query.gte('fecha_vencimiento', inicio).lte('fecha_vencimiento', fin)
     }
 
-    // Excluir placeholders de servicios sin factura ($0): se gestionan desde /servicios
+    // Admin: solo alquiler. Los servicios se gestionan desde /contratos/[id]/servicios
     query = query
-      .or('concepto.eq.alquiler,monto_esperado.gt.0')
+      .eq('concepto', 'alquiler')
       .order('fecha_vencimiento', { ascending: true })
       .limit(200)
 
@@ -206,8 +206,8 @@ export default async function PagosPage({ searchParams }: { searchParams: Search
     `)
     .in('estado', ['pendiente', 'atrasado', 'comprobante_subido'])
     .lte('fecha_vencimiento', finDeMes)
-    // Excluir placeholders de servicios sin factura ($0): se gestionan desde /servicios
-    .or('concepto.eq.alquiler,monto_esperado.gt.0')
+    // Admin: solo alquiler. Los servicios se gestionan desde /contratos/[id]/servicios
+    .eq('concepto', 'alquiler')
     .order('fecha_vencimiento', { ascending: true })
     .limit(200)
 
