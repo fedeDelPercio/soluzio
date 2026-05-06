@@ -472,7 +472,7 @@ const ESTADO_PAGO_COLOR: Record<string, string> = {
   verificado: 'text-green-600', atrasado: 'text-red-600', disputado: 'text-amber-600',
 }
 const ESTADO_PAGO_LABEL: Record<string, string> = {
-  pendiente: 'Pendiente', comprobante_subido: 'Con comprobante',
+  pendiente: 'Pendiente', comprobante_subido: 'Comprobante cargado',
   verificado: 'Verificado', atrasado: 'Atrasado', disputado: 'Disputado',
 }
 

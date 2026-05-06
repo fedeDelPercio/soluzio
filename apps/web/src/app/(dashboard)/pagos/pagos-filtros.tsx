@@ -7,7 +7,7 @@ import { ArrowLeft } from 'lucide-react'
 
 const ESTADOS = [
   { value: 'activos',            label: 'Pendientes' },
-  { value: 'comprobante_subido', label: 'Con comprobante' },
+  { value: 'comprobante_subido', label: 'Comprobante cargado' },
   { value: 'verificado',         label: 'Verificados' },
   { value: 'todos',              label: 'Todos' },
 ]
