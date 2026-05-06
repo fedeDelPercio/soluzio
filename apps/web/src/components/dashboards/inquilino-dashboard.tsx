@@ -65,19 +65,20 @@ export async function InquilinoDashboard({ perfil }: InquilinoDashboardProps) {
     (contratoInq?.facturas_servicios_las_carga ?? 'inquilino') === 'inquilino'
 
   // Servicios pendientes: cualquier slot (factura o comprobante) sin cargar.
-  // Sirve como recordatorio incluso para el mes próximo.
+  // Solo contamos hasta fin del mes en curso — los del mes próximo aún
+  // no están en mano del inquilino.
   let totalServicios        = 0
   let facturasFaltantes     = 0
   let comprobantesFaltantes = 0
   if (contratoInqId && inquilinoCargaFacturas) {
-    const finMesProx = new Date(new Date().getFullYear(), new Date().getMonth() + 2, 0)
+    const finMes = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)
       .toISOString().split('T')[0]
     const { data: pagosServRaw } = await db
       .from('pagos')
       .select('id, estado, comprobantes_pago ( tipo_comprobante )')
       .eq('contrato_id', contratoInqId)
       .neq('concepto', 'alquiler')
-      .lte('fecha_vencimiento', finMesProx)
+      .lte('fecha_vencimiento', finMes)
 
     totalServicios = (pagosServRaw ?? []).length
     for (const p of ((pagosServRaw ?? []) as any[])) {
