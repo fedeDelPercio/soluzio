@@ -56,12 +56,10 @@ export async function PropietarioDashboard({ perfil }: PropietarioDashboardProps
         )
       `)
       .order('calle', { ascending: true }),
-    // Cobros del mes: el inquilino pagó (con o sin verificación del admin)
+    // Cobros totales: todos los pagos recibidos (con o sin verificación del admin)
     db.from('pagos').select('*', { count: 'exact', head: true })
       .in('estado', ['verificado', 'comprobante_subido'])
-      .eq('concepto', 'alquiler')
-      .gte('fecha_vencimiento', inicioMesStr)
-      .lte('fecha_vencimiento', finMes),
+      .eq('concepto', 'alquiler'),
     // Sin pagar: ningún comprobante cargado, sin límite de mes
     db.from('pagos').select('*', { count: 'exact', head: true })
       .in('estado', ['pendiente', 'atrasado'])
@@ -82,10 +80,10 @@ export async function PropietarioDashboard({ perfil }: PropietarioDashboardProps
         id, contrato_id, monto_esperado, fecha_vencimiento, estado,
         contratos ( propiedades ( calle, numero ), inquilino:perfiles!contratos_inquilino_id_fkey ( nombre, apellido ) )
       `)
-      .eq('estado', 'verificado')
+      .in('estado', ['verificado', 'comprobante_subido'])
       .eq('concepto', 'alquiler')
       .order('fecha_vencimiento', { ascending: false })
-      .limit(5),
+      .limit(20),
     db.from('solicitudes').select('*', { count: 'exact', head: true })
       .not('estado', 'in', '("cerrado","resuelto")'),
   ])
@@ -120,13 +118,13 @@ export async function PropietarioDashboard({ perfil }: PropietarioDashboardProps
         </div>
         <div className="bg-white rounded-lg border border-zinc-200 p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-zinc-500">Cobros del mes</p>
+            <p className="text-sm text-zinc-500">Cobros</p>
             <CheckCircle2 className="w-4 h-4 text-zinc-400" />
           </div>
           <p className={`text-2xl font-semibold ${(cobrosDelMes ?? 0) > 0 ? 'text-green-600' : 'text-zinc-900'}`}>
             {cobrosDelMes ?? 0}
           </p>
-          <p className="text-xs text-zinc-400">Pagos recibidos este mes</p>
+          <p className="text-xs text-zinc-400">Pagos recibidos</p>
         </div>
         <div className="bg-white rounded-lg border border-zinc-200 p-4 space-y-3">
           <div className="flex items-center justify-between">
@@ -277,27 +275,28 @@ export async function PropietarioDashboard({ perfil }: PropietarioDashboardProps
           )}
         </div>
 
-        {/* Últimos cobros */}
+        {/* Cobros */}
         <div className="bg-white rounded-lg border border-zinc-200">
           <div className="px-4 py-3 border-b border-zinc-100">
-            <h2 className="text-sm font-medium text-zinc-700">Últimos cobros</h2>
+            <h2 className="text-sm font-medium text-zinc-700">Cobros</h2>
           </div>
           {ultimosPagos.length === 0 ? (
             <div className="px-4 py-8 text-center">
-              <p className="text-sm text-zinc-400">Todavía no hay cobros verificados.</p>
+              <p className="text-sm text-zinc-400">Todavía no hay cobros registrados.</p>
             </div>
           ) : (
             <div className="divide-y divide-zinc-100">
               {ultimosPagos.map((p) => {
                 const prop = p.contratos?.propiedades
                 const inq  = p.contratos?.inquilino
+                const pendienteVerificacion = p.estado === 'comprobante_subido'
                 return (
                   <Link
                     key={p.id}
                     href={`/contratos/${p.contrato_id}/pagos`}
-                    className="px-4 py-3 flex items-center justify-between hover:bg-zinc-50 transition-colors"
+                    className="px-4 py-3 flex items-center justify-between gap-3 hover:bg-zinc-50 transition-colors"
                   >
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-zinc-900 truncate">
                         {prop ? `${prop.calle} ${prop.numero}` : 'Propiedad'}
                       </p>
@@ -305,9 +304,16 @@ export async function PropietarioDashboard({ perfil }: PropietarioDashboardProps
                         {inq ? `${inq.nombre} ${inq.apellido} · ` : ''}{formatFecha(p.fecha_vencimiento)}
                       </p>
                     </div>
-                    <p className="text-sm font-semibold text-green-600 flex-shrink-0 ml-3">
-                      {formatARS(p.monto_esperado)}
-                    </p>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      {pendienteVerificacion && (
+                        <span className="text-xs font-medium text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                          Por confirmar
+                        </span>
+                      )}
+                      <p className="text-sm font-semibold text-green-600">
+                        {formatARS(p.monto_esperado)}
+                      </p>
+                    </div>
                   </Link>
                 )
               })}
