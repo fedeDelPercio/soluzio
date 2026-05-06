@@ -18,12 +18,13 @@ const NAV_ADMIN: NavItem[] = [
 ]
 
 const NAV_PROPIETARIO: NavItem[] = [
-  { label: 'Resumen', href: '/overview', icon: 'LayoutDashboard' },
-  { label: 'Mis propiedades', href: '/propiedades', icon: 'Building2' },
-  { label: 'Pagos', href: '/pagos', icon: 'CreditCard' },
-  { label: 'Solicitudes', href: '/solicitudes', icon: 'MessageSquare' },
-  { label: 'Servicios', href: '/servicios', icon: 'Zap' },
-  { label: 'Mi perfil', href: '/configuracion/perfil', icon: 'User' },
+  { label: 'Resumen',         href: '/overview',              icon: 'LayoutDashboard' },
+  { label: 'Mis propiedades', href: '/propiedades',           icon: 'Building2'       },
+  { label: 'Contratos',       href: '/contratos',             icon: 'FileText'        },
+  { label: 'Pagos',           href: '/pagos',                 icon: 'CreditCard'      },
+  { label: 'Solicitudes',     href: '/solicitudes',           icon: 'MessageSquare'   },
+  { label: 'Servicios',       href: '/servicios',             icon: 'Zap'             },
+  { label: 'Mi perfil',       href: '/configuracion/perfil',  icon: 'User'            },
 ]
 
 const NAV_INQUILINO: NavItem[] = [
