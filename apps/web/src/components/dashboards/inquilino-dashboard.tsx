@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getSession } from '@/lib/auth/session'
 import type { Perfil } from '@alquileres/database'
-import { CreditCard, Wrench, FileText, AlertCircle, Camera, Zap } from 'lucide-react'
+import { CreditCard, Wrench, FileText, AlertCircle, Camera, Zap, CheckCircle2 } from 'lucide-react'
 import { formatARS, formatFecha } from '@/lib/utils'
 
 interface InquilinoDashboardProps {
@@ -64,25 +64,38 @@ export async function InquilinoDashboard({ perfil }: InquilinoDashboardProps) {
   const inquilinoCargaFacturas =
     (contratoInq?.facturas_servicios_las_carga ?? 'inquilino') === 'inquilino'
 
-  // Facturas pendientes: solo del mes actual o meses anteriores.
-  // Los servicios del mes próximo todavía no están en mano del inquilino,
-  // por lo que no se cuentan como "por cargar".
-  let facturasPendientes = 0
+  // Servicios pendientes: cualquier slot (factura o comprobante) sin cargar.
+  // Sirve como recordatorio incluso para el mes próximo.
+  let totalServicios        = 0
+  let facturasFaltantes     = 0
+  let comprobantesFaltantes = 0
   if (contratoInqId && inquilinoCargaFacturas) {
-    const finMes = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0)
+    const finMesProx = new Date(new Date().getFullYear(), new Date().getMonth() + 2, 0)
       .toISOString().split('T')[0]
     const { data: pagosServRaw } = await db
       .from('pagos')
-      .select('id, comprobantes_pago ( tipo_comprobante )')
+      .select('id, estado, comprobantes_pago ( tipo_comprobante )')
       .eq('contrato_id', contratoInqId)
       .neq('concepto', 'alquiler')
-      .lte('fecha_vencimiento', finMes)
+      .lte('fecha_vencimiento', finMesProx)
 
-    facturasPendientes = (pagosServRaw ?? []).filter((p: any) => {
-      const comps = (p.comprobantes_pago ?? []) as any[]
-      return !comps.some((c) => c.tipo_comprobante === 'factura')
-    }).length
+    totalServicios = (pagosServRaw ?? []).length
+    for (const p of ((pagosServRaw ?? []) as any[])) {
+      const comps    = (p.comprobantes_pago ?? []) as any[]
+      const factura  = comps.some((c) => c.tipo_comprobante === 'factura')
+      const compPago = comps.some((c) => c.tipo_comprobante === 'pago')
+      const completo = (factura && compPago) || p.estado === 'verificado'
+      if (completo) continue
+      if (!factura)              facturasFaltantes++
+      if (factura && !compPago)  comprobantesFaltantes++
+    }
   }
+  const serviciosPendientes = facturasFaltantes + comprobantesFaltantes
+  const mostrarBannerServ   = !!contratoInqId && inquilinoCargaFacturas && totalServicios > 0
+  const partesPendientes: string[] = []
+  if (facturasFaltantes > 0)     partesPendientes.push(`${facturasFaltantes} factura${facturasFaltantes > 1 ? 's' : ''}`)
+  if (comprobantesFaltantes > 0) partesPendientes.push(`${comprobantesFaltantes} comprobante${comprobantesFaltantes > 1 ? 's' : ''} de pago`)
+  const mensajePendientes = `Tenés ${partesPendientes.join(' y ')} por cargar`
 
   const deudaTotal    = pagosDeuda.reduce((s, p) => s + (Number(p.monto_esperado) || 0), 0)
   const mesesVencidos = pagosDeuda.length
@@ -190,26 +203,34 @@ export async function InquilinoDashboard({ perfil }: InquilinoDashboardProps) {
         </Link>
       )}
 
-      {/* Alerta facturas de servicios pendientes */}
-      {facturasPendientes > 0 && contratoInqId && (
+      {/* Estado de servicios: pendientes en amber, todo OK en verde */}
+      {mostrarBannerServ && (serviciosPendientes > 0 ? (
         <Link
           href={`/contratos/${contratoInqId}/servicios`}
           className="flex items-start gap-3 rounded-md border px-4 py-3 bg-amber-50 border-amber-200 hover:border-amber-300 transition-colors"
         >
           <Zap className="w-4 h-4 mt-0.5 text-amber-600 flex-shrink-0" />
           <div className="flex-1">
-            <p className="text-sm font-medium text-amber-900">
-              {facturasPendientes === 1
-                ? 'Tenés 1 factura de servicio por cargar'
-                : `Tenés ${facturasPendientes} facturas de servicios por cargar`}
-            </p>
+            <p className="text-sm font-medium text-amber-900">{mensajePendientes}</p>
             <p className="text-xs text-amber-700 mt-0.5">
               Subí las facturas y los comprobantes de pago de luz, gas, agua y demás servicios.
             </p>
           </div>
           <span className="text-xs text-amber-700 font-medium flex-shrink-0">Cargar →</span>
         </Link>
-      )}
+      ) : (
+        <Link
+          href={`/contratos/${contratoInqId}/servicios`}
+          className="flex items-start gap-3 rounded-md border px-4 py-3 bg-green-50 border-green-200 hover:border-green-300 transition-colors"
+        >
+          <CheckCircle2 className="w-4 h-4 mt-0.5 text-green-600 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-green-900">Todos los servicios están al día</p>
+            <p className="text-xs text-green-700 mt-0.5">No tenés facturas ni comprobantes pendientes de carga.</p>
+          </div>
+          <span className="text-xs text-green-700 font-medium flex-shrink-0">Ver →</span>
+        </Link>
+      ))}
 
       {/* Historial de pagos */}
       <HistorialPagos />
