@@ -286,7 +286,7 @@ export function SolicitudForm({ contratos, esAdmin }: Props) {
             >
               <Upload className="w-5 h-5 text-zinc-300 mx-auto mb-1.5" />
               <p className="text-sm text-zinc-500">Arrastrá fotos o hacé clic para seleccionar</p>
-              <p className="text-xs text-zinc-400 mt-0.5">JPG, PNG, WebP · máx. 10 MB c/u · podés seleccionar varias a la vez</p>
+              <p className="text-xs text-zinc-400 mt-0.5">JPG, PNG, WebP · máx. 10 MB c/u · Ctrl+clic para seleccionar varias</p>
             </div>
           )}
           <input
