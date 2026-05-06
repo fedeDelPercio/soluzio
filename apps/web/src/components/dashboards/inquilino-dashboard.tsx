@@ -14,28 +14,37 @@ export async function InquilinoDashboard({ perfil }: InquilinoDashboardProps) {
   const supabase  = await createClient()
   const db        = supabase as any
 
-  // Todos los pagos de alquiler pendientes/atrasados para calcular deuda total
-  const { data: pagosDeudaRaw } = await db
+  const hoy = new Date().toISOString().slice(0, 10)
+
+  // Próximo pago: el más cercano pendiente/atrasado (incluye futuros)
+  const { data: proximoPagoRaw } = await db
     .from('pagos')
     .select('id, monto_esperado, fecha_vencimiento, contrato_id')
     .in('estado', ['pendiente', 'atrasado'])
     .eq('concepto', 'alquiler')
     .order('fecha_vencimiento', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+
+  const proximoPago = proximoPagoRaw as any
+
+  // Deuda total: solo pagos YA vencidos sin comprobante
+  const { data: pagosDeudaRaw } = await db
+    .from('pagos')
+    .select('id, monto_esperado, fecha_vencimiento, contrato_id')
+    .in('estado', ['pendiente', 'atrasado'])
+    .eq('concepto', 'alquiler')
+    .lte('fecha_vencimiento', hoy)
+    .order('fecha_vencimiento', { ascending: true })
 
   const pagosDeuda   = (pagosDeudaRaw ?? []) as any[]
-  const primerPago   = pagosDeuda[0] ?? null
+  const primerPago   = pagosDeuda[0] ?? proximoPago
 
   // Solicitudes activas del inquilino
   const { count: solicitudesActivas } = await db
     .from('solicitudes')
     .select('*', { count: 'exact', head: true })
     .not('estado', 'in', '("cerrado","resuelto")')
-
-  // Documentos pendientes del contrato del inquilino
-  const { count: docsPendientes } = await db
-    .from('documentos')
-    .select('*', { count: 'exact', head: true })
-    .eq('estado', 'pendiente')
 
   // Contrato del inquilino para banner de estado inicial
   const { data: contratoInq } = await db
@@ -72,10 +81,10 @@ export async function InquilinoDashboard({ perfil }: InquilinoDashboardProps) {
     }).length
   }
 
-  const hoy          = new Date().toISOString().slice(0, 10)
-  const deudaTotal   = pagosDeuda.reduce((s, p) => s + (Number(p.monto_esperado) || 0), 0)
-  const mesesVencidos = pagosDeuda.filter((p) => p.fecha_vencimiento < hoy).length
-  const hayDeuda     = deudaTotal > 0
+  const deudaTotal    = pagosDeuda.reduce((s, p) => s + (Number(p.monto_esperado) || 0), 0)
+  const mesesVencidos = pagosDeuda.length
+  const hayDeuda      = deudaTotal > 0
+  const proxVencido   = proximoPago && proximoPago.fecha_vencimiento < hoy
 
   return (
     <div className="p-6 space-y-6">
@@ -85,20 +94,20 @@ export async function InquilinoDashboard({ perfil }: InquilinoDashboardProps) {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {/* Deuda total / Próximo pago */}
+        {/* Próximo pago */}
         <Link
-          href={primerPago ? `/contratos/${primerPago.contrato_id}/pagos` : '/pagos'}
+          href={proximoPago ? `/contratos/${proximoPago.contrato_id}/pagos` : '/pagos'}
           className="bg-white rounded-lg border border-zinc-200 p-4 space-y-3 hover:border-zinc-300 transition-colors"
         >
           <div className="flex items-center justify-between">
-            <p className="text-sm text-zinc-500">{hayDeuda ? 'Deuda total' : 'Próximo pago'}</p>
+            <p className="text-sm text-zinc-500">Próximo pago</p>
             <CreditCard className="w-4 h-4 text-zinc-400" />
           </div>
-          {hayDeuda ? (
+          {proximoPago ? (
             <>
-              <p className="text-2xl font-semibold text-zinc-900">{formatARS(deudaTotal)}</p>
+              <p className="text-2xl font-semibold text-zinc-900">{formatARS(proximoPago.monto_esperado)}</p>
               <p className="text-xs text-zinc-500">
-                {mesesVencidos === 1 ? '1 mes vencido' : `${mesesVencidos} meses vencidos`}
+                {proxVencido ? `Vencido · ${formatFecha(proximoPago.fecha_vencimiento)}` : `Vence ${formatFecha(proximoPago.fecha_vencimiento)}`}
               </p>
             </>
           ) : (
@@ -119,16 +128,28 @@ export async function InquilinoDashboard({ perfil }: InquilinoDashboardProps) {
           <p className="text-xs text-zinc-400">Solicitudes activas</p>
         </Link>
 
-        {/* Documentos */}
-        <Link href="/contratos" className="bg-white rounded-lg border border-zinc-200 p-4 space-y-3 hover:border-zinc-300 transition-colors">
+        {/* Deuda total */}
+        <Link
+          href={primerPago ? `/contratos/${primerPago.contrato_id}/pagos` : '/pagos'}
+          className="bg-white rounded-lg border border-zinc-200 p-4 space-y-3 hover:border-zinc-300 transition-colors"
+        >
           <div className="flex items-center justify-between">
-            <p className="text-sm text-zinc-500">Documentos</p>
+            <p className="text-sm text-zinc-500">Deuda total</p>
             <FileText className="w-4 h-4 text-zinc-400" />
           </div>
-          <p className={`text-2xl font-semibold ${(docsPendientes ?? 0) > 0 ? 'text-amber-600' : 'text-zinc-900'}`}>
-            {docsPendientes ?? 0}
-          </p>
-          <p className="text-xs text-zinc-400">Pendientes de subir</p>
+          {hayDeuda ? (
+            <>
+              <p className="text-2xl font-semibold text-zinc-900">{formatARS(deudaTotal)}</p>
+              <p className="text-xs text-zinc-500">
+                {mesesVencidos === 1 ? '1 mes impago' : `${mesesVencidos} meses impagos`}
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-2xl font-semibold text-green-600">$ 0</p>
+              <p className="text-xs text-zinc-400">Sin deuda acumulada</p>
+            </>
+          )}
         </Link>
       </div>
 
