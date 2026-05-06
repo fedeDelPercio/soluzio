@@ -3,8 +3,6 @@
 import { useState, useRef, useTransition } from 'react'
 import { Upload, Loader2, AlertCircle, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { createClient } from '@/lib/supabase/client'
 import { subirArchivoPagoServicioAction } from './actions'
 
@@ -13,13 +11,11 @@ interface Props {
   contratoId: string
   organizacionId: string
   tipo: 'factura' | 'pago'
-  pedirMonto?: boolean
 }
 
-export function UploadArchivoServicio({ pagoId, contratoId, organizacionId, tipo, pedirMonto }: Props) {
+export function UploadArchivoServicio({ pagoId, contratoId, organizacionId, tipo }: Props) {
   const [open, setOpen]         = useState(false)
   const [archivo, setArchivo]   = useState<File | null>(null)
-  const [monto, setMonto]       = useState('')
   const [subiendo, setSubiendo] = useState(false)
   const [error, setError]       = useState<string | null>(null)
   const inputRef                = useRef<HTMLInputElement>(null)
@@ -70,7 +66,6 @@ export function UploadArchivoServicio({ pagoId, contratoId, organizacionId, tipo
         setSubiendo(false)
       } else {
         setArchivo(null)
-        setMonto('')
         setOpen(false)
         setSubiendo(false)
       }
@@ -106,22 +101,6 @@ export function UploadArchivoServicio({ pagoId, contratoId, organizacionId, tipo
           </div>
         )}
       </div>
-
-      {pedirMonto && (
-        <div className="space-y-1">
-          <Label className="text-[11px]">Monto de la factura</Label>
-          <Input
-            name="monto"
-            type="number"
-            step="0.01"
-            min="0"
-            value={monto}
-            onChange={(e) => setMonto(e.target.value)}
-            placeholder="ej: 25000"
-            className="h-7 text-xs"
-          />
-        </div>
-      )}
 
       {error && (
         <div className="flex items-center gap-1.5 text-xs text-red-600">

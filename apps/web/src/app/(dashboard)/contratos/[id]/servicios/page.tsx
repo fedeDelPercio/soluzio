@@ -179,7 +179,6 @@ export default async function ServiciosPage({ params }: Props) {
                 contratoId={contratoId}
                 organizacionId={contrato.organizacion_id}
                 tipo="factura"
-                pedirMonto={pago.monto_esperado === 0 || pago.monto_esperado == null}
               />
             ) : (
               <p className="text-xs text-zinc-400 italic">Pendiente</p>
@@ -204,7 +203,6 @@ export default async function ServiciosPage({ params }: Props) {
                 contratoId={contratoId}
                 organizacionId={contrato.organizacion_id}
                 tipo="pago"
-                pedirMonto={false}
               />
             ) : (
               <p className="text-xs text-zinc-400 italic">Pendiente</p>
