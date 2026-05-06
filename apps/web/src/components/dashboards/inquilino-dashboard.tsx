@@ -14,16 +14,16 @@ export async function InquilinoDashboard({ perfil }: InquilinoDashboardProps) {
   const supabase  = await createClient()
   const db        = supabase as any
 
-  // Próximo pago pendiente
-  const { data: proximoPagoRaw } = await db
+  // Todos los pagos de alquiler pendientes/atrasados para calcular deuda total
+  const { data: pagosDeudaRaw } = await db
     .from('pagos')
     .select('id, monto_esperado, fecha_vencimiento, contrato_id')
     .in('estado', ['pendiente', 'atrasado'])
+    .eq('concepto', 'alquiler')
     .order('fecha_vencimiento', { ascending: true })
-    .limit(1)
-    .maybeSingle()
 
-  const proximoPago = proximoPagoRaw as any
+  const pagosDeuda   = (pagosDeudaRaw ?? []) as any[]
+  const primerPago   = pagosDeuda[0] ?? null
 
   // Solicitudes activas del inquilino
   const { count: solicitudesActivas } = await db
@@ -72,8 +72,10 @@ export async function InquilinoDashboard({ perfil }: InquilinoDashboardProps) {
     }).length
   }
 
-  const hoy = new Date().toISOString().slice(0, 10)
-  const vencido = proximoPago && proximoPago.fecha_vencimiento < hoy
+  const hoy          = new Date().toISOString().slice(0, 10)
+  const deudaTotal   = pagosDeuda.reduce((s, p) => s + (Number(p.monto_esperado) || 0), 0)
+  const mesesVencidos = pagosDeuda.filter((p) => p.fecha_vencimiento < hoy).length
+  const hayDeuda     = deudaTotal > 0
 
   return (
     <div className="p-6 space-y-6">
@@ -83,22 +85,20 @@ export async function InquilinoDashboard({ perfil }: InquilinoDashboardProps) {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {/* Próximo pago */}
+        {/* Deuda total / Próximo pago */}
         <Link
-          href={proximoPago ? `/contratos/${proximoPago.contrato_id}/pagos` : '/pagos'}
-          className={`bg-white rounded-lg border p-4 space-y-3 hover:border-zinc-300 transition-colors ${vencido ? 'border-red-200' : 'border-zinc-200'}`}
+          href={primerPago ? `/contratos/${primerPago.contrato_id}/pagos` : '/pagos'}
+          className="bg-white rounded-lg border border-zinc-200 p-4 space-y-3 hover:border-zinc-300 transition-colors"
         >
           <div className="flex items-center justify-between">
-            <p className="text-sm text-zinc-500">Próximo pago</p>
-            <CreditCard className={`w-4 h-4 ${vencido ? 'text-red-400' : 'text-zinc-400'}`} />
+            <p className="text-sm text-zinc-500">{hayDeuda ? 'Deuda total' : 'Próximo pago'}</p>
+            <CreditCard className="w-4 h-4 text-zinc-400" />
           </div>
-          {proximoPago ? (
+          {hayDeuda ? (
             <>
-              <p className={`text-2xl font-semibold ${vencido ? 'text-red-600' : 'text-zinc-900'}`}>
-                {formatARS(proximoPago.monto_esperado)}
-              </p>
-              <p className={`text-xs ${vencido ? 'text-red-500' : 'text-zinc-400'}`}>
-                {vencido ? '⚠ Vencido · ' : 'Vence '}{formatFecha(proximoPago.fecha_vencimiento)}
+              <p className="text-2xl font-semibold text-zinc-900">{formatARS(deudaTotal)}</p>
+              <p className="text-xs text-zinc-500">
+                {mesesVencidos === 1 ? '1 mes vencido' : `${mesesVencidos} meses vencidos`}
               </p>
             </>
           ) : (
@@ -149,15 +149,21 @@ export async function InquilinoDashboard({ perfil }: InquilinoDashboardProps) {
         </Link>
       )}
 
-      {/* Alerta pago vencido */}
-      {vencido && (
-        <div className="flex items-start gap-3 rounded-md border px-4 py-3 bg-red-50 border-red-200">
-          <AlertCircle className="w-4 h-4 mt-0.5 text-red-600 flex-shrink-0" />
-          <div>
-            <p className="text-sm font-medium text-red-600">Tenés un pago vencido</p>
-            <p className="text-xs text-zinc-500">Subí el comprobante para regularizar tu situación.</p>
+      {/* Alerta pagos vencidos */}
+      {mesesVencidos > 0 && (
+        <Link
+          href={primerPago ? `/contratos/${primerPago.contrato_id}/pagos` : '/pagos'}
+          className="flex items-start gap-3 rounded-md border px-4 py-3 bg-amber-50 border-amber-200 hover:border-amber-300 transition-colors"
+        >
+          <AlertCircle className="w-4 h-4 mt-0.5 text-amber-600 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-amber-900">
+              {mesesVencidos === 1 ? 'Tenés 1 pago vencido' : `Tenés ${mesesVencidos} pagos vencidos`}
+            </p>
+            <p className="text-xs text-amber-700 mt-0.5">Subí el comprobante para regularizar tu situación.</p>
           </div>
-        </div>
+          <span className="text-xs text-amber-700 font-medium flex-shrink-0">Ver pagos →</span>
+        </Link>
       )}
 
       {/* Alerta facturas de servicios pendientes */}
