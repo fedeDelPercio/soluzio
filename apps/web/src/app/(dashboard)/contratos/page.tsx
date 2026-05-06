@@ -38,6 +38,12 @@ export default async function ContratosPage() {
 
   const esAdmin = perfil.rol === 'administrador'
 
+  // Inquilino/propietario/inmobiliario con un solo contrato → ir directo al detalle
+  if (!esAdmin && contratos.length === 1) {
+    const c = contratos[0]
+    redirect(c.estado === 'borrador' ? `/contratos/${c.id}/documentos` : `/contratos/${c.id}`)
+  }
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
