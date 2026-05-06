@@ -229,45 +229,35 @@ export async function PropietarioDashboard({ perfil }: PropietarioDashboardProps
                 const tieneBorrador = contratos.some(c => c.estado === 'borrador')
 
                 return (
-                  <div key={prop.id} className="px-4 py-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-zinc-900 truncate">
-                          {prop.calle} {prop.numero}
-                        </p>
-                        <p className="text-xs text-zinc-400">{prop.ciudad} · {prop.tipo_propiedad}</p>
-                      </div>
-
+                  <div key={prop.id} className="px-4 py-3 space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-medium text-zinc-900 truncate">
+                        {prop.calle} {prop.numero}
+                      </p>
                       {contratoActivo ? (
-                        <div className="flex-shrink-0 text-right">
-                          <Link
-                            href={`/contratos/${contratoActivo.id}`}
-                            className="flex items-center gap-1 text-xs text-green-700 font-medium hover:underline"
-                          >
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            Activo
-                          </Link>
-                          {contratoActivo.inquilino && (
-                            <p className="text-xs text-zinc-400 mt-0.5">
-                              {contratoActivo.inquilino.nombre} {contratoActivo.inquilino.apellido}
-                            </p>
-                          )}
-                          <p className="text-xs text-zinc-500 font-medium mt-0.5">
-                            {formatARS(contratoActivo.monto_actual)}/mes
-                          </p>
-                        </div>
+                        <Link
+                          href={`/contratos/${contratoActivo.id}`}
+                          className="flex items-center gap-1 text-xs text-green-700 font-medium bg-green-50 border border-green-200 px-2 py-0.5 rounded-full flex-shrink-0 hover:bg-green-100 transition-colors"
+                        >
+                          <CheckCircle2 className="w-3 h-3" /> Activo
+                        </Link>
                       ) : tieneBorrador ? (
-                        <span className="flex items-center gap-1 text-xs text-amber-600 font-medium flex-shrink-0">
-                          <Clock className="w-3.5 h-3.5" />
-                          En proceso
+                        <span className="flex items-center gap-1 text-xs text-amber-600 font-medium bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full flex-shrink-0">
+                          <Clock className="w-3 h-3" /> En proceso
                         </span>
                       ) : (
-                        <span className="flex items-center gap-1 text-xs text-zinc-400 flex-shrink-0">
-                          <AlertCircle className="w-3.5 h-3.5" />
-                          Sin contrato
-                        </span>
+                        <span className="text-xs text-zinc-400 flex-shrink-0">Sin contrato</span>
                       )}
                     </div>
+                    <p className="text-xs text-zinc-400">{prop.ciudad} · {prop.tipo_propiedad}</p>
+                    {contratoActivo && (
+                      <p className="text-xs text-zinc-500">
+                        {contratoActivo.inquilino
+                          ? `${contratoActivo.inquilino.nombre} ${contratoActivo.inquilino.apellido} · `
+                          : ''}
+                        {formatARS(contratoActivo.monto_actual)}/mes
+                      </p>
+                    )}
                   </div>
                 )
               })}
@@ -310,7 +300,7 @@ export async function PropietarioDashboard({ perfil }: PropietarioDashboardProps
                           Por confirmar
                         </span>
                       )}
-                      <p className="text-sm font-semibold text-green-600">
+                      <p className="text-sm text-zinc-900">
                         {formatARS(p.monto_esperado)}
                       </p>
                     </div>
