@@ -110,10 +110,11 @@ export default async function ServiciosPage({ params }: Props) {
   const cargados:   any[] = []
 
   for (const p of pagos) {
-    const comps   = (p.comprobantes_pago ?? []) as any[]
-    const factura = comps.find((c) => c.tipo_comprobante === 'factura')
-    const tieneAlgo = comps.length > 0
-    if (factura || tieneAlgo) {
+    const comps    = (p.comprobantes_pago ?? []) as any[]
+    const factura  = comps.find((c) => c.tipo_comprobante === 'factura')
+    const compPago = comps.find((c) => c.tipo_comprobante === 'pago')
+    const completo = (factura && compPago) || p.estado === 'verificado'
+    if (completo) {
       cargados.push(p)
     } else if (p.fecha_vencimiento >= inicioMesProxStr) {
       proximos.push(p)
