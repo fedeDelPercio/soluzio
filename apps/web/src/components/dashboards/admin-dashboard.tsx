@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { Perfil } from '@alquileres/database'
-import { FileText, CreditCard, Wrench, Building2, AlertCircle, Clock, TrendingUp, Eye } from 'lucide-react'
+import { FileText, CreditCard, Wrench, AlertCircle, Clock, TrendingUp, Eye } from 'lucide-react'
 import { formatARS, formatFecha } from '@/lib/utils'
 
 interface AdminDashboardProps {
@@ -23,26 +23,30 @@ export async function AdminDashboard({ perfil }: AdminDashboardProps) {
 
   const [
     { count: contratosActivos },
-    { count: pagosPendientes },
+    { count: comprobantesParaVerificar },
+    { count: pagosSinComprobante },
     { count: ticketsAbiertos },
-    { count: propiedades },
     { count: pagosAtrasados },
     { data: ajustesProximosRaw },
   ] = await Promise.all([
     db.from('contratos').select('*', { count: 'exact', head: true }).eq('estado', 'activo'),
+    // Comprobantes subidos que el admin debe revisar
     db.from('pagos')
       .select('*', { count: 'exact', head: true })
-      .in('estado', ['pendiente', 'comprobante_subido', 'atrasado'])
+      .eq('estado', 'comprobante_subido'),
+    // Pagos vencidos sin comprobante (el inquilino no pagó)
+    db.from('pagos')
+      .select('*', { count: 'exact', head: true })
+      .in('estado', ['pendiente', 'atrasado'])
       .lte('fecha_vencimiento', hoyStr)
       .or('concepto.eq.alquiler,monto_esperado.gt.0'),
     db.from('solicitudes')
       .select('*', { count: 'exact', head: true })
       .in('estado', ['abierto', 'clasificado', 'asignado', 'en_proceso']),
-    db.from('propiedades').select('*', { count: 'exact', head: true }),
-    // Pagos atrasados (vencimiento pasado y estado pendiente)
+    // Para la alerta de atrasados (mismo criterio que pagosSinComprobante)
     db.from('pagos')
       .select('*', { count: 'exact', head: true })
-      .eq('estado', 'pendiente')
+      .in('estado', ['pendiente', 'atrasado'])
       .lt('fecha_vencimiento', hoyStr)
       .or('concepto.eq.alquiler,monto_esperado.gt.0'),
     // Contratos con ajuste próximo (próximos 30 días o ya vencido)
@@ -61,10 +65,10 @@ export async function AdminDashboard({ perfil }: AdminDashboardProps) {
   ])
 
   const statCards = [
-    { label: 'Contratos activos', value: contratosActivos ?? '—', icon: FileText, description: 'Contratos vigentes', href: '/contratos' },
-    { label: 'Pagos pendientes', value: pagosPendientes ?? '—', icon: CreditCard, description: 'Por verificar', href: '/pagos' },
-    { label: 'Tickets abiertos', value: ticketsAbiertos ?? '—', icon: Wrench, description: 'Solicitudes activas', href: '/solicitudes' },
-    { label: 'Propiedades', value: propiedades ?? '—', icon: Building2, description: 'Unidades registradas', href: '/propiedades' },
+    { label: 'Contratos activos',  value: contratosActivos          ?? '—', icon: FileText,   description: 'Contratos vigentes',            href: '/contratos'  },
+    { label: 'Por verificar',      value: comprobantesParaVerificar ?? '—', icon: Eye,         description: 'Comprobantes subidos por revisar', href: '/pagos'   },
+    { label: 'Sin pagar',          value: pagosSinComprobante       ?? '—', icon: CreditCard,  description: 'Vencidos sin comprobante',       href: '/pagos'      },
+    { label: 'Tickets abiertos',   value: ticketsAbiertos           ?? '—', icon: Wrench,      description: 'Solicitudes activas',            href: '/solicitudes'},
   ]
 
   const ajustesProximos = (ajustesProximosRaw ?? []) as {
