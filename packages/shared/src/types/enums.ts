@@ -112,13 +112,22 @@ export const TIPO_NOTIFICACION = {
   CONTRATO_VENCIDO:             'contrato_vencido',             // C3
   CONTRATO_RESCINDIDO:          'contrato_rescindido',          // C5
   SOLICITUD_URGENTE:            'solicitud_urgente',            // M2
+  // medios (029): generan acción del usuario
+  PAGO_PROXIMO_VENCER:          'pago_proximo_vencer',          // P1
+  PAGO_VENCE_HOY:               'pago_vence_hoy',               // P2
+  SEGURO_PENDIENTE:             'seguro_pendiente',             // S1
+  SEGURO_PROXIMO_VENCER:        'seguro_proximo_vencer',        // S3
+  SOLICITUD_SIN_RESPUESTA:      'solicitud_sin_respuesta',      // M5
+  CONTRATO_BIENVENIDA:          'contrato_bienvenida',          // C1
+  SOLICITUD_NUEVA:              'solicitud_nueva',              // M1
 } as const
 
 export type TipoNotificacion = (typeof TIPO_NOTIFICACION)[keyof typeof TIPO_NOTIFICACION]
 
 // Eventos del MVP S4 — los que tienen template + handler implementados.
 // Es la lista canónica que renderiza el panel admin.
-export const EVENTOS_NOTIFICACION_CRITICOS = [
+export const EVENTOS_NOTIFICACION_ACTIVOS = [
+  // críticos
   TIPO_NOTIFICACION.PAGO_VENCIDO,
   TIPO_NOTIFICACION.PAGO_ATRASADO_7,
   TIPO_NOTIFICACION.PAGO_ATRASADO_15,
@@ -130,4 +139,16 @@ export const EVENTOS_NOTIFICACION_CRITICOS = [
   TIPO_NOTIFICACION.CONTRATO_VENCIDO,
   TIPO_NOTIFICACION.CONTRATO_RESCINDIDO,
   TIPO_NOTIFICACION.SOLICITUD_URGENTE,
+  // medios
+  TIPO_NOTIFICACION.PAGO_PROXIMO_VENCER,
+  TIPO_NOTIFICACION.PAGO_VENCE_HOY,
+  TIPO_NOTIFICACION.SEGURO_PENDIENTE,
+  TIPO_NOTIFICACION.SEGURO_PROXIMO_VENCER,
+  TIPO_NOTIFICACION.CONTRATO_POR_VENCER,
+  TIPO_NOTIFICACION.SOLICITUD_SIN_RESPUESTA,
+  TIPO_NOTIFICACION.CONTRATO_BIENVENIDA,
+  TIPO_NOTIFICACION.SOLICITUD_NUEVA,
 ] as const
+
+// Alias retrocompatible (usado por el panel admin).
+export const EVENTOS_NOTIFICACION_CRITICOS = EVENTOS_NOTIFICACION_ACTIVOS

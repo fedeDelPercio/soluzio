@@ -4,6 +4,7 @@ import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSession } from '@/lib/auth/session'
+import { dispararNotificacion } from '@/lib/notifications/dispatch'
 
 export async function crearContratoDesdeAnalisisAction(formData: FormData) {
   const { user, perfil } = await getSession()
@@ -286,6 +287,9 @@ export async function crearContratoDesdeAnalisisAction(formData: FormData) {
     await db.from('periodos_pago').insert(periodos)
     await db.from('pagos').insert(pagosRows)
   }
+
+  // C1: bienvenida al contrato (inquilino, coinquilino, propietario, inmobiliario).
+  await dispararNotificacion('contrato_bienvenida', contratoId)
 
   return { contratoId }
 }

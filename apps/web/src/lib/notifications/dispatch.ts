@@ -14,6 +14,8 @@ const EVENTOS_DISPATCH = [
   'documento_rechazado',
   'contrato_rescindido',
   'solicitud_urgente',
+  'contrato_bienvenida',
+  'solicitud_nueva',
 ] as const satisfies readonly TipoNotificacion[]
 
 type EventoDispatch = typeof EVENTOS_DISPATCH[number]

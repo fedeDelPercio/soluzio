@@ -1,12 +1,12 @@
-// Handler C3: Contrato vencido (offset configurable, default 1 día después).
+// Handler C2: Contrato por vencer (default 30 días antes).
 
 import { getAdminClient } from '../lib/supabase.ts'
 import { offsetsPorOrg } from '../lib/offsets.ts'
 import { resolverEmails } from '../lib/perfiles.ts'
 import { adminsDeOrg } from '../lib/admins.ts'
 import { reservarYEnviar } from '../lib/enviar.ts'
-import { buildContratoVencidoEmail } from '../templates/contrato.ts'
-import { describirPropiedad, haceDias } from '../lib/fechas.ts'
+import { buildContratoPorVencerEmail } from '../templates/contrato-eventos.ts'
+import { describirPropiedad, enDias } from '../lib/fechas.ts'
 import type { ResultadoEvento } from '../lib/types.ts'
 
 interface ContratoRow {
@@ -16,8 +16,8 @@ interface ContratoRow {
   coinquilino: { id: string; nombre: string; apellido: string } | null;
 }
 
-export async function handleContratoVencido(): Promise<ResultadoEvento> {
-  const evento = 'contrato_vencido' as const
+export async function handleContratoPorVencer(): Promise<ResultadoEvento> {
+  const evento = 'contrato_por_vencer' as const
   const resultado: ResultadoEvento = { evento, enviados: 0, dedup: 0, fallidos: 0, errores: [] }
   const supabase = getAdminClient()
 
@@ -31,7 +31,7 @@ export async function handleContratoVencido(): Promise<ResultadoEvento> {
   }
 
   for (const [diasOffset, orgIds] of porOffset) {
-    const fechaTarget = haceDias(diasOffset)
+    const fechaTarget = enDias(diasOffset)
     const { data: contratosRaw, error } = await supabase
       .from('contratos')
       .select(`
@@ -67,10 +67,13 @@ export async function handleContratoVencido(): Promise<ResultadoEvento> {
       for (const a of await adminsDeOrg(c.organizacion_id)) targets.push({ id: a.id, nombre: a.nombre, email: a.email, rol: 'admin' })
 
       for (const t of targets) {
-        const { asunto, html } = buildContratoVencidoEmail({ rol: t.rol, inquilinoNombre: t.rol !== 'inquilino' ? inqNombre : undefined, propiedad: propiedadStr, contratoId: c.id, fechaFin: c.fecha_fin })
+        const { asunto, html } = buildContratoPorVencerEmail({
+          rol: t.rol, inquilinoNombre: t.rol !== 'inquilino' ? inqNombre : undefined,
+          propiedad: propiedadStr, fechaFin: c.fecha_fin, diasFaltantes: diasOffset, contratoId: c.id,
+        })
         await reservarYEnviar({
           evento, organizacion_id: c.organizacion_id, destinatario_id: t.id,
-          destinatarioEmail: t.email, contexto_unico: `contrato:${c.id}:vencido`,
+          destinatarioEmail: t.email, contexto_unico: `contrato:${c.id}:por_vencer:${diasOffset}`,
           asunto, html, metadata: { contrato_id: c.id, fecha_fin: c.fecha_fin, dias_offset: diasOffset },
         }, resultado)
       }

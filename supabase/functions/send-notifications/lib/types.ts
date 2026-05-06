@@ -1,6 +1,7 @@
 // Tipos compartidos del edge function send-notifications.
 
 export type EventoCritico =
+  // Críticos (S4 fase 1)
   | 'pago_vencido'
   | 'pago_atrasado_7'
   | 'pago_atrasado_15'
@@ -12,6 +13,15 @@ export type EventoCritico =
   | 'contrato_vencido'
   | 'contrato_rescindido'
   | 'solicitud_urgente'
+  // Medios (S4 fase 2)
+  | 'pago_proximo_vencer'
+  | 'pago_vence_hoy'
+  | 'seguro_pendiente'
+  | 'seguro_proximo_vencer'
+  | 'contrato_por_vencer'
+  | 'solicitud_sin_respuesta'
+  | 'contrato_bienvenida'
+  | 'solicitud_nueva'
 
 export type RequestBody =
   | { modo: 'cron' }

@@ -16,6 +16,12 @@ export function haceDias(n: number): string {
   return d.toISOString().slice(0, 10)
 }
 
+export function enDias(n: number): string {
+  const d = new Date()
+  d.setUTCDate(d.getUTCDate() + n)
+  return d.toISOString().slice(0, 10)
+}
+
 export function describirPropiedad(prop: { calle: string; numero: string; piso?: string | null; depto?: string | null } | null | undefined): string {
   if (!prop) return 'Propiedad'
   const partes = [

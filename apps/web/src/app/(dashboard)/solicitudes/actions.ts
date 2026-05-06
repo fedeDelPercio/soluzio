@@ -51,9 +51,13 @@ export async function crearSolicitudAction(
 
   if (error || !solicitud) return { error: 'Error al crear la solicitud' }
 
-  // M2: si la prioridad es alta o urgente, notificar al admin de inmediato.
+  // M1 vs M2 (no se solapan):
+  //   - Prioridad alta/urgente → solicitud_urgente
+  //   - Prioridad baja/media   → solicitud_nueva
   if (parsed.data.prioridad === 'alta' || parsed.data.prioridad === 'urgente') {
     await dispararNotificacion('solicitud_urgente', solicitud.id)
+  } else {
+    await dispararNotificacion('solicitud_nueva', solicitud.id)
   }
 
   revalidatePath('/solicitudes')
