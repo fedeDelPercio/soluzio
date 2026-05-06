@@ -66,8 +66,8 @@ export async function AdminDashboard({ perfil }: AdminDashboardProps) {
 
   const statCards = [
     { label: 'Contratos activos',  value: contratosActivos          ?? '—', icon: FileText,   description: 'Contratos vigentes',            href: '/contratos'  },
-    { label: 'Por verificar',      value: comprobantesParaVerificar ?? '—', icon: Eye,         description: 'Comprobantes subidos por revisar', href: '/pagos'   },
-    { label: 'Sin pagar',          value: pagosSinComprobante       ?? '—', icon: CreditCard,  description: 'Vencidos sin comprobante',       href: '/pagos'      },
+    { label: 'Comprobantes por verificar', value: comprobantesParaVerificar ?? '—', icon: Eye,        description: 'Subidos por inquilinos, pendientes de revisión', href: '/pagos' },
+    { label: 'Meses impagos',             value: pagosSinComprobante       ?? '—', icon: CreditCard, description: 'Vencidos sin comprobante cargado',               href: '/pagos' },
     { label: 'Tickets abiertos',   value: ticketsAbiertos           ?? '—', icon: Wrench,      description: 'Solicitudes activas',            href: '/solicitudes'},
   ]
 
