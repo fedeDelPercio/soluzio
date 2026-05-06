@@ -292,7 +292,7 @@ export function SolicitudForm({ contratos, esAdmin }: Props) {
           <input
             ref={fileRef}
             type="file"
-            accept="image/jpeg,image/png,image/webp"
+            accept="image/*"
             multiple
             className="hidden"
             onChange={(e) => { agregarArchivos(e.target.files); e.target.value = '' }}
