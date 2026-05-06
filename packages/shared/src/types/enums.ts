@@ -87,3 +87,47 @@ export const PRIORIDAD_SOLICITUD = {
 } as const
 
 export type PrioridadSolicitud = (typeof PRIORIDAD_SOLICITUD)[keyof typeof PRIORIDAD_SOLICITUD]
+
+// Eventos de notificación. Mantener sincronizado con tipo_notificacion en SQL
+// (migraciones 002 y 024). Los nombres siguen el spec aprobado 2026-05-02.
+export const TIPO_NOTIFICACION = {
+  // existentes (002)
+  RECORDATORIO_PAGO:           'recordatorio_pago',
+  PAGO_VENCIDO:                'pago_vencido',                 // P3
+  PAGO_VENCIDO_GARANTE:        'pago_vencido_garante',
+  PAGO_RECIBIDO:               'pago_recibido',
+  AVISO_AJUSTE:                'aviso_ajuste',
+  CONTRATO_POR_VENCER:         'contrato_por_vencer',
+  SEGURO_INCENDIO_PENDIENTE:   'seguro_incendio_pendiente',
+  DOCUMENTOS_FALTANTES:        'documentos_faltantes',
+  ACTUALIZACION_MANTENIMIENTO: 'actualizacion_mantenimiento',
+  // nuevos críticos (024)
+  PAGO_ATRASADO_7:              'pago_atrasado_7',              // P4
+  PAGO_ATRASADO_15:             'pago_atrasado_15',             // P5
+  COMPROBANTE_RECHAZADO:        'comprobante_rechazado',        // P8
+  TASAS_AJUSTE_FALTANTES:       'tasas_ajuste_faltantes',       // A4
+  SEGURO_INCENDIO_RECORDATORIO: 'seguro_incendio_recordatorio', // S2
+  SEGURO_INCENDIO_VENCIDO:      'seguro_incendio_vencido',      // S4
+  DOCUMENTO_RECHAZADO:          'documento_rechazado',          // D2
+  CONTRATO_VENCIDO:             'contrato_vencido',             // C3
+  CONTRATO_RESCINDIDO:          'contrato_rescindido',          // C5
+  SOLICITUD_URGENTE:            'solicitud_urgente',            // M2
+} as const
+
+export type TipoNotificacion = (typeof TIPO_NOTIFICACION)[keyof typeof TIPO_NOTIFICACION]
+
+// Eventos del MVP S4 — los que tienen template + handler implementados.
+// Es la lista canónica que renderiza el panel admin.
+export const EVENTOS_NOTIFICACION_CRITICOS = [
+  TIPO_NOTIFICACION.PAGO_VENCIDO,
+  TIPO_NOTIFICACION.PAGO_ATRASADO_7,
+  TIPO_NOTIFICACION.PAGO_ATRASADO_15,
+  TIPO_NOTIFICACION.COMPROBANTE_RECHAZADO,
+  TIPO_NOTIFICACION.TASAS_AJUSTE_FALTANTES,
+  TIPO_NOTIFICACION.SEGURO_INCENDIO_RECORDATORIO,
+  TIPO_NOTIFICACION.SEGURO_INCENDIO_VENCIDO,
+  TIPO_NOTIFICACION.DOCUMENTO_RECHAZADO,
+  TIPO_NOTIFICACION.CONTRATO_VENCIDO,
+  TIPO_NOTIFICACION.CONTRATO_RESCINDIDO,
+  TIPO_NOTIFICACION.SOLICITUD_URGENTE,
+] as const

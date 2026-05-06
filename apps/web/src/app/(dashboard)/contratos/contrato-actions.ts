@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSession } from '@/lib/auth/session'
+import { dispararNotificacion } from '@/lib/notifications/dispatch'
 
 export async function rescindirContratoAction(id: string) {
   const { perfil } = await getSession()
@@ -15,6 +16,9 @@ export async function rescindirContratoAction(id: string) {
     .from('contratos')
     .update({ estado: 'rescindido' })
     .eq('id', id)
+
+  // Notificar a inquilino, propietario, inmobiliario y otros admins.
+  await dispararNotificacion('contrato_rescindido', id)
 
   revalidatePath('/contratos')
   redirect('/contratos')

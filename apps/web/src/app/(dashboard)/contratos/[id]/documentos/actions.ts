@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSession } from '@/lib/auth/session'
+import { dispararNotificacion } from '@/lib/notifications/dispatch'
 
 const SIGNED_URL_EXPIRY = 3600 // 1 hora
 
@@ -86,6 +87,34 @@ export async function verificarDocumentoAction(documentoId: string, contratoId: 
   if (error) return { error: error.message }
 
   revalidatePath(`/contratos/${contratoId}`)
+  return { ok: true }
+}
+
+// D2: Rechazar un documento. Marca estado='rechazado' y dispara la
+// notificación al inquilino + admins. Acepta un motivo opcional.
+export async function rechazarDocumentoAction(
+  documentoId: string,
+  contratoId:  string,
+  motivo?:     string,
+) {
+  const { user, perfil } = await getSession()
+  if (!user || !perfil || perfil.rol !== 'administrador') return { error: 'No autorizado' }
+
+  const supabase = await createClient()
+  const db = supabase as any
+
+  const { error } = await db
+    .from('documentos')
+    .update({ estado: 'rechazado', verificado_por: user.id })
+    .eq('id', documentoId)
+    .eq('organizacion_id', perfil.organizacion_id)
+
+  if (error) return { error: error.message }
+
+  await dispararNotificacion('documento_rechazado', documentoId, motivo ? { motivo } : undefined)
+
+  revalidatePath(`/contratos/${contratoId}`)
+  revalidatePath(`/contratos/${contratoId}/documentos`)
   return { ok: true }
 }
 

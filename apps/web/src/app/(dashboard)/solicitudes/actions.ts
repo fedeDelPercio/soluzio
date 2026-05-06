@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getSession } from '@/lib/auth/session'
 import { createSolicitudSchema, updateSolicitudSchema } from '@alquileres/shared/validators'
+import { dispararNotificacion } from '@/lib/notifications/dispatch'
 
 export async function crearSolicitudAction(
   formData: FormData,
@@ -49,6 +50,11 @@ export async function crearSolicitudAction(
     .single()
 
   if (error || !solicitud) return { error: 'Error al crear la solicitud' }
+
+  // M2: si la prioridad es alta o urgente, notificar al admin de inmediato.
+  if (parsed.data.prioridad === 'alta' || parsed.data.prioridad === 'urgente') {
+    await dispararNotificacion('solicitud_urgente', solicitud.id)
+  }
 
   revalidatePath('/solicitudes')
   return { id: solicitud.id, organizacion_id: solicitud.organizacion_id }
